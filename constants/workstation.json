@@ -1,0 +1,9 @@
+{
+    "wkAttributes": [
+        "location",
+        "room",
+        "network port",
+        "mac address",
+        "status"
+    ]
+}
