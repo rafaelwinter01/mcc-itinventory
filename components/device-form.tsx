@@ -53,7 +53,13 @@ const deviceFormSchema = z.object({
   cost: z.string().optional(),
   purchaseDate: z.string().optional(),
   endOfLife: z.string().optional(),
-  expectedReplacementYear: z.string().optional(),
+  expectedReplacementYear: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => !value || /^\d{4}$/.test(value), {
+      message: "Expected replacement year must be a 4-digit year",
+    }),
   planDescription: z.string().optional(),
   extraNotes: z.string().optional(),
   billedTo: z.string().optional(),
@@ -646,7 +652,7 @@ export function DeviceForm({ mode, deviceId, initialValues }: DeviceFormProps) {
                       <FormItem>
                         <FormLabel>Expected Replacement Year</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="2028" {...field} />
+                          <Input type="number" min={1000} max={9999} step={1} placeholder="2028" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

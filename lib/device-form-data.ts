@@ -34,7 +34,7 @@ export type DeviceRecordForForm = {
   cost?: string | number | null
   purchaseDate?: string | Date | null
   endOfLife?: string | Date | null
-  expectedReplacementYear?: number | string | null
+  expectedReplacementYear?: number | null
   planDescription?: string | null
   extraNotes?: string | null
   billedTo?: number | null

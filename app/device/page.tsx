@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/pagination"
 import { asc } from "drizzle-orm"
 import Link from "next/link"
+import { Icon, Import, PackagePlus, Plus } from "lucide-react"
 
 type DevicePageProps = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -156,9 +157,20 @@ export default async function DevicePage(props: DevicePageProps) {
 						View and filter IT assets by type, status, location, and warranty validity.
 					</p>
 				</div>
-				<Button asChild>
-					<Link href="/device/new">+ Add Device</Link>
-				</Button>
+				<div className="flex gap-2">
+					<Button className="flex items-center justify-center" asChild variant={"secondary"}>
+						<Link href="/device/import">
+							<Import className="size-4" />
+							Import Devices
+						</Link>
+					</Button>
+					<Button className="flex items-center justify-center"asChild>
+						<Link href="/device/new">
+							<PackagePlus className="size-4" />
+							Add Device
+						</Link>
+					</Button>
+				</div>
 			</div>
 
 			<DeviceFilterBar

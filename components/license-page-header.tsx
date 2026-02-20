@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Plus } from "lucide-react"
+import { Import, Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { LicenseForm } from "@/modals/License-form"
@@ -27,10 +27,21 @@ export function LicensePageHeader({ title, subtitle }: LicensePageHeaderProps) {
         <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
         {subtitle ? <p className="text-muted-foreground">{subtitle}</p> : null}
       </div>
-      <Button onClick={() => setOpen(true)} className="gap-2">
-        <Plus className="h-4 w-4" />
-        Add License
-      </Button>
+
+        <div className="flex gap-2">
+          <Button
+            className="flex items-center justify-center"
+            variant={"secondary"}
+            onClick={() => router.push("/license/import")}
+          >
+            <Import className="size-4" />
+            Import User Licenses
+          </Button>
+          <Button onClick={() => setOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add License
+          </Button>
+        </div>      
 
       <LicenseForm open={open} onOpenChange={setOpen} onSuccess={handleSuccess} />
     </div>

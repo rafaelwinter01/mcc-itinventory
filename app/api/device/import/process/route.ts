@@ -80,10 +80,12 @@ export async function POST(request: Request) {
 			if (!normalized) {
 				return null
 			}
-			const parsed = Number(normalized)
-			if (!Number.isInteger(parsed)) {
+
+			if (!/^\d{4}$/.test(normalized)) {
 				return null
 			}
+
+			const parsed = Number(normalized)
 			return parsed
 		}
 

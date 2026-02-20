@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { and, eq, inArray } from "drizzle-orm"
 import { db } from "@/db"
-import { attribute, device, deviceComputer, userDevice } from "@/db/schema"
+import { attribute, device, deviceComputer, deviceLifecycle, userDevice } from "@/db/schema"
 
 type BulkUpdatePayload = {
 	ids: number[]
@@ -33,6 +33,19 @@ export async function PUT(request: Request) {
 		}
 
 		const updates = body.updates
+
+		const parseExpectedReplacementYear = (value: unknown) => {
+			if (value === null || value === undefined || value === "") {
+				return null
+			}
+
+			const normalized = String(value).trim()
+			if (!/^\d{4}$/.test(normalized)) {
+				return undefined
+			}
+
+			return Number(normalized)
+		}
 
 		const updateSet: Record<string, unknown> = {}
 
@@ -79,6 +92,48 @@ export async function PUT(request: Request) {
 		setIfPresent("driversSite", updates.driversSite ?? null)
 		setIfPresent("description", updates.description ?? null)
 
+		const lifecycleSet: Record<string, unknown> = {}
+		const hasLifecycleKey = (key: string) =>
+			Object.prototype.hasOwnProperty.call(updates, key)
+
+		if (hasLifecycleKey("purchaseDate")) {
+			lifecycleSet.purchaseDate = updates.purchaseDate
+				? new Date(String(updates.purchaseDate))
+				: null
+		}
+
+		if (hasLifecycleKey("endOfLife")) {
+			lifecycleSet.endOfLife = updates.endOfLife
+				? new Date(String(updates.endOfLife))
+				: null
+		}
+
+		if (hasLifecycleKey("expectedReplacementYear")) {
+			const parsedYear = parseExpectedReplacementYear(updates.expectedReplacementYear)
+			if (parsedYear === undefined) {
+				return NextResponse.json(
+					{ error: "expectedReplacementYear must be a 4-digit year" },
+					{ status: 400 }
+				)
+			}
+
+			lifecycleSet.expectedReplacementYear = parsedYear
+		}
+
+		if (hasLifecycleKey("planDescription")) {
+			lifecycleSet.planDescription = updates.planDescription ?? null
+		}
+
+		if (hasLifecycleKey("billedTo")) {
+			lifecycleSet.billedTo = updates.billedTo ? Number(updates.billedTo) : null
+		}
+
+		if (hasLifecycleKey("costTo")) {
+			lifecycleSet.costTo = updates.costTo ? Number(updates.costTo) : null
+		}
+
+		const hasLifecycleUpdates = Object.keys(lifecycleSet).length > 0
+
 		const assignedUserId = hasKey("assignedUserId")
 			? updates.assignedUserId
 				? Number(updates.assignedUserId)
@@ -90,6 +145,34 @@ export async function PUT(request: Request) {
 		await db.transaction(async (tx) => {
 			if (Object.keys(updateSet).length > 0) {
 				await tx.update(device).set(updateSet).where(inArray(device.id, ids))
+			}
+
+			if (hasLifecycleUpdates) {
+				for (const deviceId of ids) {
+					const [existingLifecycle] = await tx
+						.select()
+						.from(deviceLifecycle)
+						.where(eq(deviceLifecycle.deviceId, deviceId))
+						.limit(1)
+
+					if (existingLifecycle) {
+						await tx
+							.update(deviceLifecycle)
+							.set(lifecycleSet)
+							.where(eq(deviceLifecycle.deviceId, deviceId))
+					} else {
+						const hasAnyValue = Object.values(lifecycleSet).some(
+							(value) => value !== null && value !== undefined
+						)
+
+						if (hasAnyValue) {
+							await tx.insert(deviceLifecycle).values({
+								deviceId,
+								...lifecycleSet,
+							})
+						}
+					}
+				}
 			}
 
 			if (assignedUserId !== undefined) {

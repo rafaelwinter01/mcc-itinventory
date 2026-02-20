@@ -17,6 +17,23 @@ import {
 import { eq, and } from "drizzle-orm"
 import { alias } from "drizzle-orm/mysql-core"
 
+const parseExpectedReplacementYear = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  const normalized = String(value).trim()
+  if (!normalized) {
+    return null
+  }
+
+  if (!/^\d{4}$/.test(normalized)) {
+    return null
+  }
+
+  return Number(normalized)
+}
+
 type RouteContext = {
   params: Promise<{ id: string }>
 }
@@ -120,6 +137,21 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     const body = await request.json()
     const { attributes = [], computer, ...deviceData } = body
+    const expectedReplacementYear = parseExpectedReplacementYear(
+      deviceData.expectedReplacementYear
+    )
+
+    if (
+      deviceData.expectedReplacementYear !== null &&
+      deviceData.expectedReplacementYear !== undefined &&
+      String(deviceData.expectedReplacementYear).trim() !== "" &&
+      expectedReplacementYear === null
+    ) {
+      return NextResponse.json(
+        { error: "expectedReplacementYear must be a 4-digit year" },
+        { status: 400 }
+      )
+    }
 
     if (!deviceData.name || !deviceData.deviceTypeId) {
       return NextResponse.json(
@@ -201,6 +233,34 @@ export async function PUT(request: NextRequest, context: RouteContext) {
           domain: computer.domain || null,
           os: computer.os,
           config: computer.config || null,
+        })
+      }
+
+      const lifecyclePayload = {
+        purchaseDate: deviceData.purchaseDate ? new Date(deviceData.purchaseDate) : null,
+        endOfLife: deviceData.endOfLife ? new Date(deviceData.endOfLife) : null,
+        expectedReplacementYear,
+        planDescription: deviceData.planDescription || null,
+        extraNotes: deviceData.extraNotes || null,
+        billedTo: deviceData.billedTo ? Number(deviceData.billedTo) : null,
+        costTo: deviceData.costTo ? Number(deviceData.costTo) : null,
+      }
+
+      const hasLifecycleData =
+        lifecyclePayload.purchaseDate !== null ||
+        lifecyclePayload.endOfLife !== null ||
+        lifecyclePayload.expectedReplacementYear !== null ||
+        lifecyclePayload.planDescription !== null ||
+        lifecyclePayload.extraNotes !== null ||
+        lifecyclePayload.billedTo !== null ||
+        lifecyclePayload.costTo !== null
+
+      await tx.delete(deviceLifecycle).where(eq(deviceLifecycle.deviceId, deviceId))
+
+      if (hasLifecycleData) {
+        await tx.insert(deviceLifecycle).values({
+          deviceId,
+          ...lifecyclePayload,
         })
       }
 

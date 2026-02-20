@@ -57,7 +57,7 @@ export type DeviceLifecycle = {
   deviceId: number
   purchaseDate?: string | Date | null
   endOfLife?: string | Date | null
-  expectedReplacementYear?: number | string | null
+  expectedReplacementYear?: number | null
   planDescription?: string | null
   extraNotes?: string | null
   billedToLocation?: DeviceRelation | null

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   ColumnDef,
   ColumnFiltersState,
+  FilterFn,
   SortingState,
   VisibilityState,
   flexRender,
@@ -61,6 +62,85 @@ export type UserLicenseExportFilters = {
   q?: string
 }
 
+type NumberRangeFilterValue = {
+  min?: string
+  max?: string
+}
+
+type DateRangeFilterValue = {
+  from?: string
+  to?: string
+}
+
+const COLUMN_INPUT_TYPE: Record<string, "text" | "number" | "date"> = {
+  userName: "text",
+  userEmail: "text",
+  licenseName: "text",
+  cost: "number",
+  billingFrequency: "text",
+  active: "text",
+  createdAt: "date",
+  updatedAt: "date",
+}
+
+const getFilterInputType = (columnId: string): "text" | "number" | "date" =>
+  COLUMN_INPUT_TYPE[columnId] ?? "text"
+
+const numberRangeFilter: FilterFn<unknown> = (row, columnId, value) => {
+  const filterValue = (value ?? {}) as NumberRangeFilterValue
+  const min = filterValue.min ? Number(filterValue.min) : null
+  const max = filterValue.max ? Number(filterValue.max) : null
+
+  if (min === null && max === null) {
+    return true
+  }
+
+  const rowValue = Number(row.getValue(columnId))
+  if (!Number.isFinite(rowValue)) {
+    return false
+  }
+
+  if (min !== null && rowValue < min) {
+    return false
+  }
+
+  if (max !== null && rowValue > max) {
+    return false
+  }
+
+  return true
+}
+
+const dateRangeFilter: FilterFn<unknown> = (row, columnId, value) => {
+  const filterValue = (value ?? {}) as DateRangeFilterValue
+  const from = filterValue.from ? new Date(filterValue.from) : null
+  const to = filterValue.to ? new Date(`${filterValue.to}T23:59:59.999`) : null
+
+  if (!from && !to) {
+    return true
+  }
+
+  const raw = row.getValue(columnId)
+  if (!raw) {
+    return false
+  }
+
+  const rowDate = raw instanceof Date ? raw : new Date(String(raw))
+  if (Number.isNaN(rowDate.getTime())) {
+    return false
+  }
+
+  if (from && rowDate < from) {
+    return false
+  }
+
+  if (to && rowDate > to) {
+    return false
+  }
+
+  return true
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
@@ -84,8 +164,8 @@ export function DataTable<TData, TValue>({
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [isExportOpen, setIsExportOpen] = React.useState(false)
 
-  const columnsWithSelection: ColumnDef<TData, TValue>[] = [
-    {
+  const columnsWithSelection = React.useMemo<ColumnDef<TData, TValue>[]>(() => {
+    const selectionColumn: ColumnDef<TData, TValue> = {
       id: "select",
       header: ({ table }) => (
         <Checkbox
@@ -106,13 +186,46 @@ export function DataTable<TData, TValue>({
       ),
       enableSorting: false,
       enableHiding: false,
-    } as ColumnDef<TData, TValue>,
-    ...columns,
-  ]
+    }
+
+    const typedColumns = columns.map((column) => {
+      const columnRecord = column as unknown as Record<string, unknown>
+      const accessorKey =
+        typeof columnRecord.accessorKey === "string"
+          ? columnRecord.accessorKey
+          : ""
+      const columnId =
+        (typeof column.id === "string" && column.id) ||
+        accessorKey
+      const filterType = getFilterInputType(columnId)
+
+      if (filterType === "number") {
+        return {
+          ...column,
+          filterFn: numberRangeFilter as FilterFn<TData>,
+        } as ColumnDef<TData, TValue>
+      }
+
+      if (filterType === "date") {
+        return {
+          ...column,
+          filterFn: dateRangeFilter as FilterFn<TData>,
+        } as ColumnDef<TData, TValue>
+      }
+
+      return column as ColumnDef<TData, TValue>
+    }) as ColumnDef<TData, TValue>[]
+
+    return [selectionColumn, ...typedColumns]
+  }, [columns])
 
   const table = useReactTable({
     data,
     columns: columnsWithSelection,
+    filterFns: {
+      numberRange: numberRangeFilter,
+      dateRange: dateRangeFilter,
+    },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -255,14 +368,83 @@ export function DataTable<TData, TValue>({
             <TableRow>
               {table.getHeaderGroups().slice(-1)[0].headers.map((header) => (
                 <TableHead key={`${header.id}-filter`}>
-                  {header.column.id === "select" || !header.column.getCanFilter() ? null : (
-                    <Input
-                      value={(header.column.getFilterValue() as string) ?? ""}
-                      onChange={(event) => header.column.setFilterValue(event.target.value)}
-                      placeholder="Filter..."
-                      className="h-8"
-                    />
-                  )}
+                  {header.column.id === "select" || !header.column.getCanFilter()
+                    ? null
+                    : (() => {
+                        const filterType = getFilterInputType(header.column.id)
+
+                        if (filterType === "number") {
+                          const value = (header.column.getFilterValue() as NumberRangeFilterValue | undefined) ?? {}
+                          const isCostColumn = header.column.id === "cost"
+                          const numberInputClassName = isCostColumn
+                            ? "h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            : "h-8"
+
+                          return (
+                            <div className="flex gap-1">
+                              <Input
+                                type="number"
+                                value={value.min ?? ""}
+                                onChange={(event) => {
+                                  const next = { ...value, min: event.target.value }
+                                  const hasValue = Boolean(next.min || next.max)
+                                  header.column.setFilterValue(hasValue ? next : undefined)
+                                }}
+                                placeholder="Min"
+                                className={numberInputClassName}
+                              />
+                              <Input
+                                type="number"
+                                value={value.max ?? ""}
+                                onChange={(event) => {
+                                  const next = { ...value, max: event.target.value }
+                                  const hasValue = Boolean(next.min || next.max)
+                                  header.column.setFilterValue(hasValue ? next : undefined)
+                                }}
+                                placeholder="Max"
+                                className={numberInputClassName}
+                              />
+                            </div>
+                          )
+                        }
+
+                        if (filterType === "date") {
+                          const value = (header.column.getFilterValue() as DateRangeFilterValue | undefined) ?? {}
+                          return (
+                            <div className="flex gap-1">
+                              <Input
+                                type="date"
+                                value={value.from ?? ""}
+                                onChange={(event) => {
+                                  const next = { ...value, from: event.target.value }
+                                  const hasValue = Boolean(next.from || next.to)
+                                  header.column.setFilterValue(hasValue ? next : undefined)
+                                }}
+                                className="h-8 w-24"
+                              />
+                              <Input
+                                type="date"
+                                value={value.to ?? ""}
+                                onChange={(event) => {
+                                  const next = { ...value, to: event.target.value }
+                                  const hasValue = Boolean(next.from || next.to)
+                                  header.column.setFilterValue(hasValue ? next : undefined)
+                                }}
+                                className="h-8 w-24"
+                              />
+                            </div>
+                          )
+                        }
+
+                        return (
+                          <Input
+                            value={(header.column.getFilterValue() as string) ?? ""}
+                            onChange={(event) => header.column.setFilterValue(event.target.value)}
+                            placeholder="Filter..."
+                            className="h-8"
+                          />
+                        )
+                      })()}
                 </TableHead>
               ))}
             </TableRow>

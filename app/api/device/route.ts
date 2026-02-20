@@ -17,6 +17,23 @@ import {
 import { eq, or, like, and, gte, lte, sql, desc } from "drizzle-orm"
 import { alias } from "drizzle-orm/mysql-core"
 
+const parseExpectedReplacementYear = (value: unknown) => {
+	if (value === null || value === undefined) {
+		return null
+	}
+
+	const normalized = String(value).trim()
+	if (!normalized) {
+		return null
+	}
+
+	if (!/^\d{4}$/.test(normalized)) {
+		return null
+	}
+
+	return Number(normalized)
+}
+
 export async function GET(request: NextRequest) {
 	try {
 		const { searchParams } = new URL(request.url)
@@ -161,6 +178,21 @@ export async function POST(req: Request) {
 	try {
 		const body = await req.json()
 		const { attributes, computer, ...deviceData } = body
+		const expectedReplacementYear = parseExpectedReplacementYear(
+			deviceData.expectedReplacementYear
+		)
+
+		if (
+			deviceData.expectedReplacementYear !== null &&
+			deviceData.expectedReplacementYear !== undefined &&
+			String(deviceData.expectedReplacementYear).trim() !== "" &&
+			expectedReplacementYear === null
+		) {
+			return NextResponse.json(
+				{ error: "expectedReplacementYear must be a 4-digit year" },
+				{ status: 400 }
+			)
+		}
 
 		if (!deviceData.name || !deviceData.deviceTypeId) {
 			return NextResponse.json({ error: "Name and deviceTypeId are required" }, { status: 400 })
@@ -191,7 +223,7 @@ export async function POST(req: Request) {
 			const hasLifecycleData = Boolean(
 				deviceData.purchaseDate ||
 				deviceData.endOfLife ||
-				deviceData.expectedReplacementYear ||
+				expectedReplacementYear !== null ||
 				deviceData.planDescription ||
 				deviceData.extraNotes ||
 				deviceData.billedTo ||
@@ -203,9 +235,7 @@ export async function POST(req: Request) {
 					deviceId,
 					purchaseDate: deviceData.purchaseDate ? new Date(deviceData.purchaseDate) : null,
 					endOfLife: deviceData.endOfLife ? new Date(deviceData.endOfLife) : null,
-					expectedReplacementYear: deviceData.expectedReplacementYear
-						? Number(deviceData.expectedReplacementYear)
-						: null,
+					expectedReplacementYear,
 					planDescription: deviceData.planDescription || null,
 					extraNotes: deviceData.extraNotes || null,
 					billedTo: deviceData.billedTo ? Number(deviceData.billedTo) : null,
