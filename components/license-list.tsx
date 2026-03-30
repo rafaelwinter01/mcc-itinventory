@@ -3,14 +3,15 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-import { LicenseCard, type LicenseCardData } from "@/components/license-card"
+import { LicenseCard, type LicenseCardData, type LicenseCardProps } from "@/components/license-card"
 import { LicenseForm } from "@/modals/License-form"
 
 type LicenseListProps = {
   licenses: LicenseCardData[]
+  variant?: LicenseCardProps["variant"]
 }
 
-export function LicenseList({ licenses }: LicenseListProps) {
+export function LicenseList({ licenses, variant = "default" }: LicenseListProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [activeId, setActiveId] = useState<number | null>(null)
@@ -37,7 +38,7 @@ export function LicenseList({ licenses }: LicenseListProps) {
     <>
       <div className="grid gap-4 md:grid-cols-2">
         {licenses.map((license) => (
-          <LicenseCard key={license.id} license={license} onEdit={handleEdit} />
+          <LicenseCard key={license.id} license={license} onEdit={handleEdit} variant={variant} />
         ))}
       </div>
 

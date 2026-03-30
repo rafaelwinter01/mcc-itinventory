@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/providers/theme-provider"
+import { PreferencesLoader } from "@/providers/preferences-loader"
 import { Roboto, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
@@ -37,10 +38,12 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <PreferencesLoader />
             <Header />
             <main className="mx-auto px-4 sm:px-6 lg:px-8 xl:px-24 py-6">
               {children}
             </main>
+            <Toaster />
           </ThemeProvider>
         </body>
       </html>

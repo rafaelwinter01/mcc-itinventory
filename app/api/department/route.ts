@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { department, history } from "@/db/schema";
+import { department } from "@/db/schema";
+import { saveHistory } from "@/db/historyServices";
 import { eq } from "drizzle-orm";
 
 /**
@@ -39,11 +40,12 @@ export async function POST(request: NextRequest) {
       name: body.name,
     });
 
-    // Record in history
-    await db.insert(history).values({
+    await saveHistory({
+      userId: null,
       action: "CREATE",
       entityName: "department",
       description: `Created new department: ${body.name}`,
+      entityId: result.insertId,
     });
 
     return NextResponse.json(
@@ -108,11 +110,12 @@ export async function PATCH(request: NextRequest) {
       })
       .where(eq(department.id, body.id));
 
-    // Record in history
-    await db.insert(history).values({
+    await saveHistory({
+      userId: null,
       action: "UPDATE",
       entityName: "department",
       description: `Updated department name from "${currentData[0].name}" to "${body.name}"`,
+      entityId: body.id,
     });
 
     return NextResponse.json(

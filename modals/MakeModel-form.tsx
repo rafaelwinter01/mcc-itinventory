@@ -24,18 +24,32 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
 type MakeModel = {
   id: number
   make: string
   model: string
+  deviceTypeId: number | null
   description: string | null
+}
+
+type DeviceType = {
+  id: number
+  name: string
 }
 
 const formSchema = z.object({
   make: z.string().min(1, "Make is required").max(100, "Make is too long"),
   model: z.string().min(1, "Model is required").max(100, "Model is too long"),
+  deviceTypeId: z.string().optional(),
   description: z.string().max(500, "Description is too long").optional(),
 })
 
@@ -45,11 +59,16 @@ type MakeModelFormProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   onSuccess?: () => void
+  deviceType?: {
+    id: number
+    name: string
+  }
 }
 
-export function MakeModelForm({ open: controlledOpen, onOpenChange, onSuccess }: MakeModelFormProps) {
+export function MakeModelForm({ open: controlledOpen, onOpenChange, onSuccess, deviceType }: MakeModelFormProps) {
   const [internalOpen, setInternalOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [deviceTypes, setDeviceTypes] = useState<DeviceType[]>([])
 
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen
   const setOpen = onOpenChange || setInternalOpen
@@ -59,24 +78,62 @@ export function MakeModelForm({ open: controlledOpen, onOpenChange, onSuccess }:
     defaultValues: {
       make: "",
       model: "",
+      deviceTypeId: deviceType ? String(deviceType.id) : "",
       description: "",
     },
   })
 
+  const fetchDeviceTypes = async () => {
+    try {
+      const response = await fetch("/api/devicetype")
+      if (!response.ok) {
+        throw new Error("Failed to fetch device types")
+      }
+
+      const data: DeviceType[] = await response.json()
+      setDeviceTypes(data)
+    } catch (error) {
+      console.error("Error loading device types:", error)
+      toast.error("Failed to load device types")
+    }
+  }
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    fetchDeviceTypes()
+
+    if (deviceType) {
+      form.setValue("deviceTypeId", String(deviceType.id), { shouldDirty: false })
+    }
+  }, [open, deviceType, form])
+
   const onSubmit = async (values: FormValues) => {
     setLoading(true)
     try {
+      const payload = {
+        ...values,
+        deviceTypeId: values.deviceTypeId ? Number(values.deviceTypeId) : null,
+      }
+
       const response = await fetch("/api/makemodel", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       })
 
       if (response.ok) {
         toast.success("Make/Model created successfully")
-        form.reset()
+        form.reset({
+          make: "",
+          model: "",
+          description: "",
+          deviceTypeId: deviceType ? String(deviceType.id) : "",
+        })
         setOpen(false)
         onSuccess?.()
         // fetchMakeModelList()
@@ -133,6 +190,36 @@ export function MakeModelForm({ open: controlledOpen, onOpenChange, onSuccess }:
                     </FormItem>
                   )}
                 />
+              <FormField
+                control={form.control}
+                name="deviceTypeId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Device Type (Optional)</FormLabel>
+                    <Select
+                      onValueChange={(value) =>
+                        field.onChange(value === "__none__" ? "" : value)
+                      }
+                      value={field.value || "__none__"}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select device type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {deviceTypes.map((type) => (
+                          <SelectItem key={type.id} value={String(type.id)}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />                
               </div>
 
               <FormField

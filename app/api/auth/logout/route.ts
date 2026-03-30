@@ -4,17 +4,24 @@ import { db } from "@/db";
 import { session } from "@/db/schema";
 import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
+import { SESSION_COOKIE_NAME } from "@/lib/session";
 
 export async function POST() {
   const cookieStore = cookies();
-  const sessionId = (await cookieStore).get("session_id")?.value;
+  const sessionId = (await cookieStore).get(SESSION_COOKIE_NAME)?.value;
 
   if (sessionId) {
     await db.delete(session).where(eq(session.id, sessionId));
   }
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.delete("session_id");
+  res.cookies.set(SESSION_COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    path: "/",
+    maxAge: 0,
+  });
 
   return res;
 }

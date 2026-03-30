@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { LogOut, KeyRound, User } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { ChangePasswordForm } from "@/modals/Changepassword-form"
+import { PreferencesForm } from "@/modals/Preferences-form"
 
 type UserData = {
   username: string
@@ -26,6 +27,7 @@ export function UserNav() {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
   const [showChangePassword, setShowChangePassword] = useState(false)
+  const [showPreferences, setShowPreferences] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -85,6 +87,10 @@ export function UserNav() {
           <KeyRound className="mr-2 h-4 w-4" />
           <span>Change Password</span>
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setShowPreferences(true)}>
+          <User className="mr-2 h-4 w-4" />
+          <span>Preferences</span>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
           <LogOut className="mr-2 h-4 w-4" />
@@ -94,6 +100,10 @@ export function UserNav() {
       <ChangePasswordForm 
         open={showChangePassword} 
         onOpenChange={setShowChangePassword} 
+      />
+      <PreferencesForm
+        open={showPreferences}
+        onOpenChange={setShowPreferences}
       />
     </DropdownMenu>
   )

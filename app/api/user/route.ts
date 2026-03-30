@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { user, department, history } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { user, department, history, userDevice, device, deviceType } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function POST(req: Request) {
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
 
 export async function GET() {
   try {
-    const allUsers = await db
+    const allUsersPromise = db
       .select({
         id: user.id,
         firstname: user.firstname,
@@ -65,7 +65,41 @@ export async function GET() {
       .from(user)
       .leftJoin(department, eq(user.departmentId, department.id));
 
-    return NextResponse.json(allUsers, { status: 200 });
+    const assignedDevicesPromise = db
+      .select({
+        userId: userDevice.userId,
+        id: device.id,
+        name: device.name,
+        deviceTypeName: deviceType.name,
+      })
+      .from(userDevice)
+      .innerJoin(device, eq(userDevice.deviceId, device.id))
+      .leftJoin(deviceType, eq(device.deviceTypeId, deviceType.id))
+      .where(eq(userDevice.assigned, true));
+
+    const [allUsers, assignedDevices] = await Promise.all([
+      allUsersPromise,
+      assignedDevicesPromise,
+    ]);
+
+    const devicesByUser = new Map<number, Array<{ id: number; name: string; deviceTypeName: string | null }>>();
+
+    for (const item of assignedDevices) {
+      const userDevices = devicesByUser.get(item.userId) ?? [];
+      userDevices.push({
+        id: item.id,
+        name: item.name,
+        deviceTypeName: item.deviceTypeName,
+      });
+      devicesByUser.set(item.userId, userDevices);
+    }
+
+    const usersWithDevices = allUsers.map((item) => ({
+      ...item,
+      devices: devicesByUser.get(item.id) ?? [],
+    }));
+
+    return NextResponse.json(usersWithDevices, { status: 200 });
   } catch (error) {
     console.error("Error fetching users:", error);
     return NextResponse.json(

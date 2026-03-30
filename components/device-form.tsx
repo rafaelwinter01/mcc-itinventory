@@ -100,7 +100,7 @@ export function DeviceForm({ mode, deviceId, initialValues }: DeviceFormProps) {
   const [statuses, setStatuses] = useState<{ id: number; name: string }[]>([])
   const [locations, setLocations] = useState<{ id: number; name: string }[]>([])
   const [departments, setDepartments] = useState<{ id: number; name: string }[]>([])
-  const [models, setModels] = useState<{ id: number; make: string; model: string }[]>([])
+  const [models, setModels] = useState<{ id: number; make: string; model: string; deviceTypeId: number | null }[]>([])
 
   const [deviceTypeModal, setDeviceTypeModal] = useState(false)
   const [modelModal, setModelModal] = useState(false)
@@ -148,6 +148,14 @@ export function DeviceForm({ mode, deviceId, initialValues }: DeviceFormProps) {
     resolver: zodResolver(deviceFormSchema),
     defaultValues,
   })
+
+  const selectedDeviceTypeId = form.watch("deviceTypeId")
+  const selectedDeviceType = types.find(
+    (type) => String(type.id) === selectedDeviceTypeId
+  )
+  const filteredModels = selectedDeviceTypeId
+    ? models.filter((model) => String(model.deviceTypeId) === selectedDeviceTypeId)
+    : models
 
   const { fields, append, remove } = useFieldArray({
     name: "attributes",
@@ -217,6 +225,21 @@ export function DeviceForm({ mode, deviceId, initialValues }: DeviceFormProps) {
     fetchLists()
   }, [])
 
+    useEffect(() => {
+      const selectedMakeModelId = form.getValues("makeModelId")
+      if (!selectedMakeModelId) {
+        return
+      }
+
+      const stillAvailable = filteredModels.some(
+        (model) => String(model.id) === selectedMakeModelId
+      )
+
+      if (!stillAvailable) {
+        form.setValue("makeModelId", "")
+      }
+    }, [filteredModels, form])
+
   async function onSubmit(data: DeviceFormValues) {
     if (mode === "edit" && !deviceId) {
       toast.error("Missing device identifier")
@@ -235,6 +258,7 @@ export function DeviceForm({ mode, deviceId, initialValues }: DeviceFormProps) {
 
       const response = await fetch(endpoint, {
         method,
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
@@ -425,14 +449,14 @@ export function DeviceForm({ mode, deviceId, initialValues }: DeviceFormProps) {
                       <FormItem>
                         <FormLabel>Make / Model</FormLabel>
                         <div className="flex gap-2">
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select model" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {models.map((m) => (
+                              {filteredModels.map((m) => (
                                 <SelectItem key={m.id} value={m.id.toString()}>
                                   {m.make} - {m.model}
                                 </SelectItem>
@@ -928,7 +952,12 @@ export function DeviceForm({ mode, deviceId, initialValues }: DeviceFormProps) {
       </Form>
 
       <DeviceTypeForm open={deviceTypeModal} onOpenChange={setDeviceTypeModal} onSuccess={fetchTypes} />
-      <MakeModelForm open={modelModal} onOpenChange={setModelModal} onSuccess={fetchModels} />
+      <MakeModelForm
+        open={modelModal}
+        onOpenChange={setModelModal}
+        onSuccess={fetchModels}
+        deviceType={selectedDeviceType}
+      />
       <LocationForm open={locationModal} onOpenChange={setLocationModal} onSuccess={fetchLocations} />
       <DepartmentForm open={departmentModal} onOpenChange={setDepartmentModal} onSuccess={fetchDepartments} />
       <StatusForm open={statusModal} onOpenChange={setStatusModal} onSuccess={fetchStatuses} />

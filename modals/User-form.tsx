@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { DepartmentForm } from "./Department-form"
 import { SystemUserForm } from "./Systemuser-form"
 import { UserLicenseForm } from "./UserLicense-form"
 
@@ -91,6 +92,7 @@ export function UserForm({ open, onOpenChange, onSuccess, editUser }: UserFormPr
   const [userLicenses, setUserLicenses] = useState<UserLicenseItem[]>([])
   const [loadingLicenses, setLoadingLicenses] = useState(false)
   const [showLicenseModal, setShowLicenseModal] = useState(false)
+  const [showDepartmentModal, setShowDepartmentModal] = useState(false)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -304,20 +306,31 @@ export function UserForm({ open, onOpenChange, onSuccess, editUser }: UserFormPr
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Department</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={loadingDepts ? "Loading..." : "Select a department"} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={String(dept.id)}>
-                          {dept.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={loadingDepts ? "Loading..." : "Select a department"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept.id} value={String(dept.id)}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="gap-2"
+                      variant={"outline"}
+                      onClick={() => setShowDepartmentModal(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -459,6 +472,15 @@ export function UserForm({ open, onOpenChange, onSuccess, editUser }: UserFormPr
           onSuccess={fetchUserLicenses}
         />
       )}
+
+      <DepartmentForm
+        open={showDepartmentModal}
+        onOpenChange={setShowDepartmentModal}
+        onSuccess={() => {
+          fetchDepartments()
+          setShowDepartmentModal(false)
+        }}
+      />
     </Dialog>
   )
 }

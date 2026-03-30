@@ -10,8 +10,8 @@ async function getData(searchParams?: URLSearchParams): Promise<UserLicenseRow[]
   try {
     const queryString = searchParams?.toString()
     const url = queryString
-      ? `http://localhost:3000/api/user-license?${queryString}&limit=100`
-      : "http://localhost:3000/api/user-license?limit=100"
+      ? `http://localhost:3000/api/user-license?${queryString}&limit=1000`
+      : "http://localhost:3000/api/user-license?limit=1000"
 
     const response = await fetch(url, {
       cache: "no-store",

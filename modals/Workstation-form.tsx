@@ -34,6 +34,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { PeripheralForm } from "@/modals/Peripheral-form"
 import workstationConstants from "@/constants/workstation.json"
 
 type AttributeItem = {
@@ -145,6 +146,7 @@ export function WorkstationForm({
 	const [selectedDeviceId, setSelectedDeviceId] = useState<string>("")
 	const [selectedPeripheralId, setSelectedPeripheralId] = useState<string>("")
 	const [peripheralQuantity, setPeripheralQuantity] = useState<string>("1")
+	const [peripheralFormOpen, setPeripheralFormOpen] = useState(false)
 
 	const open = controlledOpen !== undefined ? controlledOpen : internalOpen
 	const setOpen = onOpenChange || setInternalOpen
@@ -385,6 +387,10 @@ export function WorkstationForm({
 		setAssignedPeripherals((prev) => prev.filter((item) => item.peripheralId !== peripheralId))
 	}
 
+	const handlePeripheralCreated = useCallback(() => {
+		fetchLists()
+	}, [fetchLists])
+
 	const onSubmit = async (values: FormValues) => {
 		setLoading(true)
 		try {
@@ -438,7 +444,8 @@ export function WorkstationForm({
 	}
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
+		<>
+			<Dialog open={open} onOpenChange={setOpen}>
 			<DialogContent className="sm:max-w-5xl">
 				<DialogHeader>
 					<DialogTitle>{workstationId ? "Edit Workstation" : "Create Workstation"}</DialogTitle>
@@ -644,27 +651,39 @@ export function WorkstationForm({
 
 							<div className="space-y-4">
 								<div className="text-sm font-medium">Peripherals</div>
-								<div className="grid gap-2 md:grid-cols-[1fr_140px_auto]">
-									<Select value={selectedPeripheralId} onValueChange={setSelectedPeripheralId}>
-										<SelectTrigger>
-											<SelectValue
-												placeholder={loadingLists ? "Loading peripherals..." : "Select a peripheral"}
-											/>
-										</SelectTrigger>
-										<SelectContent>
-											{peripherals.map((item) => (
-												<SelectItem key={item.id} value={String(item.id)}>
-													{item.name}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
+								<div className="grid gap-2 md:grid-cols-[1fr_auto_140px_auto]">
+									<div className="flex gap-2">
+										<Select value={selectedPeripheralId} onValueChange={setSelectedPeripheralId}>
+											<SelectTrigger>
+												<SelectValue
+													placeholder={loadingLists ? "Loading peripherals..." : "Select a peripheral"}
+												/>
+											</SelectTrigger>
+											<SelectContent>
+												{peripherals.map((item) => (
+													<SelectItem key={item.id} value={String(item.id)}>
+														{item.name}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<Button
+											type="button"
+											variant="outline"
+											size="icon"
+											onClick={() => setPeripheralFormOpen(true)}
+											aria-label="Add peripheral"
+										>
+											<Plus className="h-4 w-4" />
+										</Button>
+									</div>
 									<Input
 										type="number"
 										min={1}
 										value={peripheralQuantity}
 										onChange={(event) => setPeripheralQuantity(event.target.value)}
 										placeholder="Qty"
+										className="w-24"
 									/>
 									<Button type="button" onClick={handleAddPeripheral} disabled={!selectedPeripheralId}>
 										Add Peripheral
@@ -713,5 +732,11 @@ export function WorkstationForm({
 				</ScrollArea>
 			</DialogContent>
 		</Dialog>
+			<PeripheralForm
+				open={peripheralFormOpen}
+				onOpenChange={setPeripheralFormOpen}
+				onSuccess={handlePeripheralCreated}
+			/>
+		</>
 	)
 }

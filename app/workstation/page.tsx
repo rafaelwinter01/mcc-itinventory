@@ -1,7 +1,9 @@
-import { type WorkstationCardData } from "@/components/workstation-card"
+import { type WorkstationCardData, type WorkstationCardProps } from "@/components/workstation-card"
 import { WorkstationFilterBar, type WorkstationFilterState } from "@/components/workstation-filter-bar"
 import { WorkstationList } from "@/components/workstation-list"
 import { WorkstationPageHeader } from "@/components/workstation-page-header"
+import { CARD_MODEL, CARD_MODEL_KEYS } from "@/constants/preferences"
+import { getSession } from "@/lib/session"
 import {
 	Pagination,
 	PaginationContent,
@@ -23,6 +25,36 @@ type WorkstationApiResponse = {
 	limit: number
 	offset: number
 	total: number
+}
+
+type PreferenceLast = {
+	cardModel?: unknown
+	value?: unknown
+}
+
+type PreferenceBucket = {
+	last?: Record<string, unknown>
+}
+
+type PreferencesResponse = {
+	data?: PreferenceBucket
+}
+
+const CARD_VARIANTS = new Set<WorkstationCardProps["variant"]>(Object.values(CARD_MODEL_KEYS))
+
+const resolveCardVariant = (lastPreference: unknown): WorkstationCardProps["variant"] => {
+	if (!lastPreference || typeof lastPreference !== "object" || Array.isArray(lastPreference)) {
+		return CARD_MODEL_KEYS.DEFAULT
+	}
+
+	const parsedLast = lastPreference as PreferenceLast
+	const value = typeof parsedLast.cardModel === "string" ? parsedLast.cardModel : parsedLast.value
+
+	if (typeof value === "string" && CARD_VARIANTS.has(value as WorkstationCardProps["variant"])) {
+		return value as WorkstationCardProps["variant"]
+	}
+
+	return CARD_MODEL_KEYS.DEFAULT
 }
 
 const WORKSTATIONS_PER_PAGE = 20
@@ -50,6 +82,7 @@ export default async function WorkstationPage(props: WorkstationPageProps) {
 	const searchParams = await props.searchParams
 	const normalized = normalizeFilters(searchParams)
 	const { page: pageParam, ...filterState } = normalized
+	const sessionUser = await getSession()
 	const currentPage = Math.max(1, Number(pageParam) || 1)
 	const limit = WORKSTATIONS_PER_PAGE
 	const offset = (currentPage - 1) * limit
@@ -80,6 +113,26 @@ export default async function WorkstationPage(props: WorkstationPageProps) {
 	}
 
 	const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+
+	let cardVariant: WorkstationCardProps["variant"] = CARD_MODEL_KEYS.DEFAULT
+
+	if (sessionUser?.username) {
+		const preferenceQuery = new URLSearchParams({
+			username: sessionUser.username,
+			key: CARD_MODEL,
+		})
+
+		const preferenceResponse = await fetch(
+			`${baseUrl}/api/auth/me/preferences?${preferenceQuery.toString()}`,
+			{ cache: "no-store" }
+		)
+
+		if (preferenceResponse.ok) {
+			const preferencePayload = (await preferenceResponse.json()) as PreferencesResponse
+			cardVariant = resolveCardVariant(preferencePayload.data?.last)
+		}
+	}
+
 	const response = await fetch(`${baseUrl}/api/workstation?${query.toString()}`, {
 		cache: "no-store",
 	})
@@ -121,7 +174,7 @@ export default async function WorkstationPage(props: WorkstationPageProps) {
 			</div>
 
 			{workstations.length ? (
-				<WorkstationList workstations={workstations} />
+				<WorkstationList workstations={workstations} variant={cardVariant} />
 			) : (
 				<div className="rounded-2xl border border-dashed p-10 text-center">
 					<p className="text-lg font-medium">No workstations match the filters.</p>

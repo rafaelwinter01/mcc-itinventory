@@ -6,6 +6,7 @@ import {
   FileSpreadsheet,
   Gauge,
   Laptop,
+  MonitorSpeaker,
   Users,
 } from "lucide-react"
 
@@ -70,14 +71,14 @@ export default async function Home() {
       title: "Workstations",
       value: data.summary.workstations,
       detail: "Registered workstations",
-      icon: Laptop,
+      icon: MonitorSpeaker,
     },
     {
       id: "device",
       title: "Devices",
       value: data.summary.devices,
       detail: "Tracked devices",
-      icon: Gauge,
+      icon: Laptop,
     },
     {
       id: "user",

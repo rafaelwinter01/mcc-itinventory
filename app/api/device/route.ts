@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db"
+import { saveHistory } from "@/db/historyServices"
+import { getSession } from "@/lib/session"
 import {
 	device,
 	attribute,
 	deviceComputer,
 	deviceLifecycle,
-	history,
 	deviceType,
 	status,
 	location,
@@ -176,6 +177,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(req: Request) {
 	try {
+		const sessionUser = await getSession()
+
+		if (!sessionUser) {
+			return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+		}
+
 		const body = await req.json()
 		const { attributes, computer, ...deviceData } = body
 		const expectedReplacementYear = parseExpectedReplacementYear(
@@ -198,6 +205,23 @@ export async function POST(req: Request) {
 			return NextResponse.json({ error: "Name and deviceTypeId are required" }, { status: 400 })
 		}
 
+		const assignedUserId =
+			deviceData.assignedUserId !== undefined && deviceData.assignedUserId !== null
+				? Number(deviceData.assignedUserId)
+				: deviceData.userAssignedId !== undefined && deviceData.userAssignedId !== null
+					? Number(deviceData.userAssignedId)
+					: null
+
+		const hasLifecycleData = Boolean(
+			deviceData.purchaseDate ||
+			deviceData.endOfLife ||
+			expectedReplacementYear !== null ||
+			deviceData.planDescription ||
+			deviceData.extraNotes ||
+			deviceData.billedTo ||
+			deviceData.costTo
+		)
+
 		const result = await db.transaction(async (tx) => {
 			const [newDevice] = await tx.insert(device).values({
 				name: deviceData.name,
@@ -219,16 +243,6 @@ export async function POST(req: Request) {
 			}).$returningId()
 
 			const deviceId = newDevice.id
-
-			const hasLifecycleData = Boolean(
-				deviceData.purchaseDate ||
-				deviceData.endOfLife ||
-				expectedReplacementYear !== null ||
-				deviceData.planDescription ||
-				deviceData.extraNotes ||
-				deviceData.billedTo ||
-				deviceData.costTo
-			)
 
 			if (hasLifecycleData) {
 				await tx.insert(deviceLifecycle).values({
@@ -264,24 +278,45 @@ export async function POST(req: Request) {
 				})
 			}
 
-			if (deviceData.assignedUserId) {
+			if (assignedUserId) {
 				await tx.insert(userDevice).values({
-					userId: Number(deviceData.assignedUserId),
+					userId: assignedUserId,
 					deviceId,
 					assigned: true,
 					dateAssignment: new Date(),
 				})
 			}
 
-			await tx.insert(history).values({
-				userId: null,
-				action: "CREATE",
-				entityName: "device",
-				description: `Created device: ${deviceData.name}`,
-			})
-
 			return { id: deviceId }
 		})
+
+		await saveHistory({
+			userId: sessionUser.userId,
+			action: "CREATE",
+			entityName: "device",
+			description: `Created device: ${deviceData.name}`,
+			entityId: result.id,
+		})
+
+		if (assignedUserId) {
+			await saveHistory({
+				userId: sessionUser.userId,
+				action: "ASSIGN",
+				entityName: "device",
+				description: `Assigned user ID ${assignedUserId}`,
+				entityId: result.id,
+			})
+		}
+
+		if (hasLifecycleData) {
+			await saveHistory({
+				userId: sessionUser.userId,
+				action: "UPDATE",
+				entityName: "device_lifecycle",
+				description: `Added lifecycle data for device`,
+				entityId: result.id,
+			})
+		}
 
 		return NextResponse.json(result, { status: 201 })
 	} catch (error) {

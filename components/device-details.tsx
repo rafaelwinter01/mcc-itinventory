@@ -6,7 +6,6 @@ import {
   Cpu, 
   ShieldCheck, 
   History, 
-  FileText, 
   Globe, 
   ArrowLeft,
   Pencil,
@@ -16,11 +15,12 @@ import {
   CalendarClock
 } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { HistoryContent } from "@/components/history-content"
+import { HISTORY_ENTITY_NAME_MAP } from "@/constants/general"
 import { cn } from "@/lib/utils"
 
 export type DeviceAttribute = {
@@ -100,7 +100,11 @@ function formatCost(cost: string | number | null | undefined) {
   return String(cost)
 }
 
-function DeviceDetailsCompact({ deviceData }: { deviceData: DeviceDetailsRecord }) {
+function DeviceDetailsCompact({
+  deviceData,
+}: {
+  deviceData: DeviceDetailsRecord
+}) {
   const formatDate = (date: string | Date | null) => {
     if (!date) return "N/A"
     const parsedDate = typeof date === "string" ? new Date(date) : date
@@ -407,10 +411,10 @@ function DeviceDetailsCompact({ deviceData }: { deviceData: DeviceDetailsRecord 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-            <FileText className="h-8 w-8 mb-2 opacity-20" />
-            <p className="text-xs">History tracking coming soon.</p>
-          </div>
+          <HistoryContent
+            entityId={deviceData.id}
+            entityName={HISTORY_ENTITY_NAME_MAP.DEVICE}
+          />
         </CardContent>
       </Card>
     </div>
@@ -754,10 +758,10 @@ export function DeviceDetails({ deviceData, variant = "default" }: DeviceDetails
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-            <FileText className="h-12 w-12 mb-4 opacity-20" />
-            <p>The maintenance and history log will be available soon.</p>
-          </div>
+          <HistoryContent
+            entityId={deviceData.id}
+            entityName={HISTORY_ENTITY_NAME_MAP.DEVICE}
+          />
         </CardContent>
       </Card>
     </div>

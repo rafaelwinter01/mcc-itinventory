@@ -8,8 +8,8 @@ async function getData(searchParams?: URLSearchParams): Promise<Device[]> {
   try {
     const queryString = searchParams?.toString()
     const url = queryString
-      ? `http://localhost:3000/api/device?${queryString}&limit=100`
-      : "http://localhost:3000/api/device?limit=100"
+      ? `http://localhost:3000/api/device?${queryString}&limit=1000`
+      : "http://localhost:3000/api/device?limit=1000"
 
 
       console.log('Fetching devices from URL:', url)

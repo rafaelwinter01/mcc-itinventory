@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { UserPlus, User, Signpost } from "lucide-react"
+import { UserPlus, User, Signpost, Import } from "lucide-react"
+import Link from "next/link"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -9,6 +10,7 @@ import { UserForm } from "@/modals/User-form"
 import { DepartmentForm } from "@/modals/Department-form"
 import { UserFilterBar } from "@/components/user-filter-bar"
 import { UserCard } from "@/components/user-card"
+import { usePreferencesStore } from "@/stores/preferences-store"
 import {
   Card,
   CardContent,
@@ -24,6 +26,7 @@ type UserRecord = {
   departmentId: number | null
   departmentName: string | null
   createdAt: string
+  devices: Array<{ id: number; name: string }>
 }
 
 type Department = {
@@ -40,6 +43,8 @@ export default function UserPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [selectedDept, setSelectedDept] = useState("all")
+  const cardModel = usePreferencesStore((state) => state.cardModel)
+  const loadPreferences = usePreferencesStore((state) => state.loadPreferences)
 
   const fetchData = async () => {
     setLoading(true)
@@ -68,6 +73,12 @@ export default function UserPage() {
     fetchData()
   }, [])
 
+  useEffect(() => {
+    loadPreferences().catch(() => {
+      // silent fallback to default model from store
+    })
+  }, [loadPreferences])
+
   const filteredUsers = users.filter((user) => {
     const fullName = `${user.firstname} ${user.lastname}`.toLowerCase()
     const matchesSearch = fullName.includes(search.toLowerCase()) || 
@@ -89,6 +100,12 @@ export default function UserPage() {
           <Button variant="secondary" onClick={() => setOpenDepartmentForm(true)}>
             <Signpost className="mr-2 h-4 w-4" />
             Add Department
+          </Button>
+          <Button variant="secondary" asChild>
+            <Link href="/user/import">
+              <Import className="mr-2 h-4 w-4" />
+              Import Collaborators
+            </Link>
           </Button>
           <Button onClick={() => setOpenUserForm(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
@@ -156,6 +173,8 @@ export default function UserPage() {
               email={user.email}
               departmentName={user.departmentName}
               createdAt={user.createdAt}
+              devices={user.devices}
+              variant={cardModel}
               onClick={() => {
                 setEditUser(user)
                 setOpenUserForm(true)

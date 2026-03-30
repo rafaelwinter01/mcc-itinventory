@@ -1,4 +1,4 @@
-import { DeviceCard } from "@/components/device-card"
+import { DeviceCard, type DeviceCardProps } from "@/components/device-card"
 import { DeviceFilterBar } from "@/components/device-filter-bar"
 import { Button } from "@/components/ui/button"
 import { db } from "@/db"
@@ -9,6 +9,8 @@ import {
 	type DeviceRecord,
 	type DeviceFilterOption,
 } from "@/lib/device-constants"
+import { CARD_MODEL, CARD_MODEL_KEYS } from "@/constants/preferences"
+import { getSession } from "@/lib/session"
 import {
 	Pagination,
 	PaginationContent,
@@ -21,6 +23,7 @@ import {
 import { asc } from "drizzle-orm"
 import Link from "next/link"
 import { Icon, Import, PackagePlus, Plus } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 type DevicePageProps = {
 	searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -36,6 +39,36 @@ type DeviceApiResponse = {
 type FilterRow = {
 	id: number
 	name: string | null
+}
+
+type PreferenceLast = {
+	cardModel?: unknown
+	value?: unknown
+}
+
+type PreferenceBucket = {
+	last?: Record<string, unknown>
+}
+
+type PreferencesResponse = {
+	data?: PreferenceBucket
+}
+
+const CARD_VARIANTS = new Set<DeviceCardProps["variant"]>(Object.values(CARD_MODEL_KEYS))
+
+const resolveCardVariant = (lastPreference: unknown): DeviceCardProps["variant"] => {
+	if (!lastPreference || typeof lastPreference !== "object" || Array.isArray(lastPreference)) {
+		return CARD_MODEL_KEYS.DEFAULT
+	}
+
+	const parsedLast = lastPreference as PreferenceLast
+	const value = typeof parsedLast.cardModel === "string" ? parsedLast.cardModel : parsedLast.value
+
+	if (typeof value === "string" && CARD_VARIANTS.has(value as DeviceCardProps["variant"])) {
+		return value as DeviceCardProps["variant"]
+	}
+
+	return CARD_MODEL_KEYS.DEFAULT
 }
 
 const buildFilterOptions = (
@@ -73,9 +106,30 @@ export default async function DevicePage(props: DevicePageProps) {
 	const searchParams = await props.searchParams
 	const normalized = normalizeFilters(searchParams)
 	const { page: pageParam, ...filterState } = normalized
+	const sessionUser = await getSession()
 	const currentPage = Math.max(1, Number(pageParam) || 1)
 	const limit = DEVICES_PER_PAGE
 	const offset = (currentPage - 1) * limit
+	const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+
+	let cardVariant: DeviceCardProps["variant"] = CARD_MODEL_KEYS.DEFAULT
+
+	if (sessionUser?.username) {
+		const preferenceQuery = new URLSearchParams({
+			username: sessionUser.username,
+			key: CARD_MODEL,
+		})
+
+		const preferenceResponse = await fetch(
+			`${baseUrl}/api/auth/me/preferences?${preferenceQuery.toString()}`,
+			{ cache: "no-store" }
+		)
+
+		if (preferenceResponse.ok) {
+			const preferencePayload = (await preferenceResponse.json()) as PreferencesResponse
+			cardVariant = resolveCardVariant(preferencePayload.data?.last)
+		}
+	}
 
 	const filterSourcesPromise = Promise.all([
 		db
@@ -120,7 +174,6 @@ export default async function DevicePage(props: DevicePageProps) {
 		query.set("warrantyEndEnd", filterState.warrantyEnd)
 	}
 
-	const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 	const response = await fetch(`${baseUrl}/api/device?${query.toString()}`, {
 		cache: "no-store",
 	})
@@ -193,9 +246,9 @@ export default async function DevicePage(props: DevicePageProps) {
                             	</div>
 
 			{devices.length ? (
-				<div className="flex flex-col gap-4">
+				<div className={cn(`flex flex-col`, cardVariant === CARD_MODEL_KEYS.CLASSIC ? "gap-2" : "gap-4")}>
 					{devices.map((device) => (
-						<DeviceCard key={device.id} device={device} variant="default" />
+						<DeviceCard key={device.id} device={device} variant={cardVariant} />
 					))}
 				</div>
 			) : (

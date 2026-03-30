@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "@/db";
 import { systemUser } from "@/db/schema";
-import { createSession } from "@/lib/session";
+import {
+  createSession,
+  SESSION_COOKIE_NAME,
+  SESSION_TTL_SECONDS,
+} from "@/lib/session";
 import { eq } from "drizzle-orm";
 
 export async function POST(req: Request) {
@@ -29,11 +33,12 @@ export async function POST(req: Request) {
 
   const res = NextResponse.json({ ok: true });
 
-  res.cookies.set("session_id", sessionId, {
+  res.cookies.set(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
     secure: true,
     sameSite: "strict",
     path: "/",
+    maxAge: SESSION_TTL_SECONDS,
   });
 
   return res;

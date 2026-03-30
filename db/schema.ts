@@ -73,6 +73,10 @@ export const makeModel = mysqlTable("make_model", {
   id: serial("id").primaryKey(),
   make: varchar("make", { length: 100 }).notNull(),
   model: varchar("model", { length: 100 }).notNull(),
+  deviceTypeId: int("device_type_id").references(() => deviceType.id, {
+    onDelete: "set null",
+    onUpdate: "cascade",
+  }),
   description: text("description"),
 });
 
@@ -320,6 +324,7 @@ export const history = mysqlTable("history", {
   action: varchar("action", { length: 255 }).notNull(),
   entityName: varchar("entity_name", { length: 255 }).notNull(),
   description: text("description"),
+  entityId: int("entity_id"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -330,6 +335,7 @@ export const systemUser = mysqlTable("system_user", {
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   role: mysqlEnum("role", ["admin", "common"]).default("common"),
   isActive: int("is_active").default(1),
+  preferences: json("preferences").default(sql`(JSON_OBJECT())`),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   lastLoginAt: datetime("last_login_at"),
 });

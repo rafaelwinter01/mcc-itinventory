@@ -35,9 +35,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (
+      body.deviceTypeId !== undefined &&
+      body.deviceTypeId !== null &&
+      (!Number.isInteger(body.deviceTypeId) || body.deviceTypeId <= 0)
+    ) {
+      return NextResponse.json(
+        { error: "deviceTypeId must be a positive integer or null" },
+        { status: 400 }
+      )
+    }
+
     const newMakeModel = await db.insert(makeModel).values({
       make: body.make,
       model: body.model,
+      deviceTypeId: body.deviceTypeId ?? null,
       description: body.description || null,
     })
 

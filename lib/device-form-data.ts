@@ -1,4 +1,5 @@
 import type { DeviceFormValues } from "@/components/device-form"
+import { cookies } from "next/headers"
 
 export type DeviceAttributeRecord = {
   key: string | null
@@ -69,10 +70,15 @@ export const buildDeviceEndpoint = (deviceId: number) => {
 
 export async function fetchDeviceRecord(deviceId: number): Promise<DeviceRecordForForm | null> {
   const endpoint = buildDeviceEndpoint(deviceId)
+  const cookieHeader = (await cookies())
+    .getAll()
+    .map((cookie) => `${cookie.name}=${cookie.value}`)
+    .join("; ")
 
   const response = await fetch(endpoint, {
     cache: "no-store",
     next: { revalidate: 0 },
+    headers: cookieHeader ? { cookie: cookieHeader } : undefined,
   })
 
   if (response.status === 404) {

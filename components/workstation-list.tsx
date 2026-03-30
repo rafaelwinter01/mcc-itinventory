@@ -3,14 +3,15 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-import { WorkstationCard, type WorkstationCardData } from "@/components/workstation-card"
+import { WorkstationCard, type WorkstationCardData, type WorkstationCardProps } from "@/components/workstation-card"
 import { WorkstationForm } from "@/modals/Workstation-form"
 
 type WorkstationListProps = {
   workstations: WorkstationCardData[]
+  variant?: WorkstationCardProps["variant"]
 }
 
-export function WorkstationList({ workstations }: WorkstationListProps) {
+export function WorkstationList({ workstations, variant = "default" }: WorkstationListProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [activeId, setActiveId] = useState<number | null>(null)
@@ -35,9 +36,15 @@ export function WorkstationList({ workstations }: WorkstationListProps) {
 
   return (
     <>
-      <div className="grid lg:grid-cols-2 2xl:grid-cols-3 gap-4">
+      <div
+        className={
+          variant === "classic"
+            ? "grid gap-4 lg:grid-cols-2"
+            : "grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"
+        }
+      >
         {workstations.map((item) => (
-          <WorkstationCard key={item.id} workstation={item} onEdit={handleEdit} />
+          <WorkstationCard key={item.id} workstation={item} onEdit={handleEdit} variant={variant} />
         ))}
       </div>
 

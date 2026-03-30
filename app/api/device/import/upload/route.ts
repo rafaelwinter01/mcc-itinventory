@@ -58,7 +58,7 @@ const toSearchTokens = (value: string) =>
 	value
 		.split(/[ .]+/g)
 		.map((token) => token.trim())
-		.filter(Boolean)
+		.filter((token) => token.length >= 3)
 
 export async function POST(request: Request) {
 	const formData = await request.formData()

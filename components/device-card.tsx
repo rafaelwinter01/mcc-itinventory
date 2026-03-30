@@ -1,5 +1,6 @@
 import { format } from "date-fns"
 import { enUS } from "date-fns/locale"
+import { Laptop } from "lucide-react"
 
 import type { DeviceRecord } from "@/lib/device-constants"
 import { cn } from "@/lib/utils"
@@ -54,6 +55,12 @@ export type DeviceCardProps = {
   variant?: "default" | "compact" | "classic"
 }
 
+const renderLaptopBadge = () => (
+  <div className="rounded-full bg-primary/10 p-2">
+    <Laptop className="h-4 w-4 text-primary" />
+  </div>
+)
+
 export function DeviceCardClassic({ device }: DeviceCardProps) {
   const meta = buildMeta(device)
 
@@ -107,7 +114,7 @@ export function DeviceCardClassic({ device }: DeviceCardProps) {
           </div>
 
           {/* Status */}
-          <div className="col-span-2 flex justify-end sm:col-span-2 sm:justify-end">
+          <div className="col-span-2 flex items-center justify-end gap-2 sm:col-span-2 sm:justify-end">
             <Badge
               variant="outline"
               className={cn(
@@ -119,6 +126,7 @@ export function DeviceCardClassic({ device }: DeviceCardProps) {
             >
               {meta.statusLabel}
             </Badge>
+            {renderLaptopBadge()}
           </div>
         </div>
       </Card>
@@ -180,25 +188,31 @@ export function DeviceCardCompact({ device }: DeviceCardProps) {
             </span>
           </div>
 
-          <div className="flex flex-col gap-1 min-w-0">
+          <div className="flex justify-between"
+          >
+
+          <div className="flex flex-col gap-1 min-w-0 ">
             <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">
               Status
             </span>
-            <div className="flex">
+            <div className="flex items-center gap-2">
               <Badge 
                 variant="outline" 
                 className={cn(
                   "border-0 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide h-auto min-h-0 rounded-sm", 
                   meta.statusLabel === "No status"
-                    ? "bg-muted text-muted-foreground"
-                    : device.status?.color || "bg-secondary text-secondary-foreground"
+                  ? "bg-muted text-muted-foreground"
+                  : device.status?.color || "bg-secondary text-secondary-foreground"
                 )}
-              >
+                >
                 {meta.statusLabel}
               </Badge>
             </div>
           </div>
-          
+          <div className="grid place-items-center">
+            {renderLaptopBadge()}
+          </div>
+          </div>
         </div>
       </Card>
     </Link>
@@ -233,7 +247,10 @@ export function DeviceCard({ device, variant = "default" }: DeviceCardProps) {
                 {meta.typeLabel}
               </Badge>
             </div>
-            <span className={badgeClassName}>{meta.statusLabel}</span>
+            <div className="flex items-center gap-2">
+              <span className={badgeClassName}>{meta.statusLabel}</span>
+              {renderLaptopBadge()}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="grid gap-4 text-sm md:grid-cols-3 lg:grid-cols-5">

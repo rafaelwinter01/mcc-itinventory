@@ -60,9 +60,18 @@ import {
   type MultiEditOption,
 } from "@/modals/MultiEditDevice-form"
 import { ExportDevicesModal } from "@/modals/ExportDevices-Modal"
+import { ReportForm } from "@/modals/Report-form"
+import { SavePreferencesForm } from "@/modals/SavePreferences-form"
 import {
   DEVICE_BULK_EDIT_SCHEMA,
 } from "@/lib/device-bulk-edit-schema"
+import {
+  DEVICE_DATA_SELECTED_COLUMNS,
+  DEVICE_REPORT_DATA,
+} from "@/constants/preferences"
+import { PreferenceValue } from "@/types/preference"
+import { DataSettingsMenu } from "@/components/Data-settings-menu"
+import { toast } from "sonner"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -78,6 +87,33 @@ type NumberRangeFilterValue = {
 type DateRangeFilterValue = {
   from?: string
   to?: string
+}
+
+type PreferenceBucket = {
+  last?: PreferenceValue
+  list: PreferenceValue[]
+}
+
+type MeResponse = {
+  username?: string
+}
+
+type PreferenceResponse = {
+  maxListItems?: number
+  data?: PreferenceBucket
+}
+
+type SavePreferencePayload = {
+  name: string
+  index: number | null
+  command: "new" | "last"
+  visibleColumnIds?: string[]
+}
+
+type LoadPreferenceTarget = number | "last"
+
+type SelectedColumnsPreferenceContent = {
+  visibleColumnIds?: string[]
 }
 
 const DATE_COLUMN_IDS = new Set<string>([
@@ -179,6 +215,12 @@ export function DataTable<TData, TValue>({
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [isExportOpen, setIsExportOpen] = React.useState(false)
+  const [isReportOpen, setIsReportOpen] = React.useState(false)
+  const [isSavingPreference, setIsSavingPreference] = React.useState(false)
+  const [openSavePreferences, setOpenSavePreferences] = React.useState(false)
+  const [savedPreferences, setSavedPreferences] = React.useState<PreferenceValue[]>([])
+  const [maxPreferenceOccurrences, setMaxPreferenceOccurrences] = React.useState(0)
+  const [activeUserPreference, setActiveUserPreference] = React.useState<PreferenceBucket | null>(null)
 
   const columnsWithSelection = React.useMemo<ColumnDef<TData, TValue>[]>(() => {
     const selectionColumn: ColumnDef<TData, TValue> = {
@@ -265,6 +307,213 @@ export function DataTable<TData, TValue>({
     },
   })
 
+  const buildVisibleColumnIdsFromState = React.useCallback(
+    (nextVisibility?: VisibilityState) => {
+      return table
+        .getAllColumns()
+        .filter((column) => column.id !== "select")
+        .filter((column) => {
+          if (!nextVisibility) {
+            return column.getIsVisible()
+          }
+
+          const visibilityValue = nextVisibility[column.id]
+          return visibilityValue !== false
+        })
+        .map((column) => column.id)
+    },
+    [table]
+  )
+
+  const saveColumnPreference = React.useCallback(
+    async ({ name, index, command, visibleColumnIds }: SavePreferencePayload) => {
+      const content: SelectedColumnsPreferenceContent = {
+        visibleColumnIds: visibleColumnIds ?? buildVisibleColumnIdsFromState(),
+      }
+
+      const preferenceValue: PreferenceValue = {
+        name,
+        createdAt: new Date(),
+        content,
+      }
+
+      if (command === "new") {
+        setIsSavingPreference(true)
+      }
+
+      try {
+        const response = await fetch("/api/auth/me/preferences", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            command,
+            property: DEVICE_DATA_SELECTED_COLUMNS,
+            value: preferenceValue,
+            ...(index === null ? {} : { index }),
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to save preference")
+        }
+
+        if (command === "last") {
+          setActiveUserPreference((current) => ({
+            last: preferenceValue,
+            list: current?.list ?? savedPreferences,
+          }))
+          return
+        }
+
+        setSavedPreferences((current) => {
+          if (index !== null) {
+            if (index < 0 || index >= current.length) {
+              return current
+            }
+
+            return current.map((item, itemIndex) =>
+              itemIndex === index ? preferenceValue : item
+            )
+          }
+
+          if (maxPreferenceOccurrences <= 0) {
+            return [...current, preferenceValue]
+          }
+
+          return [
+            ...current.slice(-(maxPreferenceOccurrences - 1)),
+            preferenceValue,
+          ]
+        })
+
+        setOpenSavePreferences(false)
+      } catch {
+        if (command === "new") {
+          toast.error("Failed to save selected columns")
+        }
+      } finally {
+        if (command === "new") {
+          setIsSavingPreference(false)
+        }
+      }
+    },
+    [
+      buildVisibleColumnIdsFromState,
+      maxPreferenceOccurrences,
+      savedPreferences,
+    ]
+  )
+
+  const applySelectedColumnsPreference = React.useCallback(
+    (content: SelectedColumnsPreferenceContent) => {
+      const allColumns = table
+        .getAllColumns()
+        .filter((column) => column.id !== "select")
+
+      const savedIds = new Set(content.visibleColumnIds ?? [])
+      const nextVisibility: VisibilityState = {}
+
+      allColumns.forEach((column) => {
+        nextVisibility[column.id] = savedIds.has(column.id)
+      })
+
+      table.setColumnVisibility(nextVisibility)
+    },
+    [table]
+  )
+
+  const loadColumnPreference = React.useCallback(
+    (target: LoadPreferenceTarget) => {
+      const preference =
+        target === "last"
+          ? activeUserPreference?.last
+          : savedPreferences[target]
+
+      if (!preference?.content) {
+        toast.error("Preference not found to load")
+        return
+      }
+
+      applySelectedColumnsPreference(preference.content as SelectedColumnsPreferenceContent)
+    },
+    [activeUserPreference?.last, applySelectedColumnsPreference, savedPreferences]
+  )
+
+  React.useEffect(() => {
+    const loadActiveUserPreference = async () => {
+      try {
+        const meResponse = await fetch("/api/auth/me")
+        if (!meResponse.ok) {
+          setActiveUserPreference(null)
+          setSavedPreferences([])
+          setMaxPreferenceOccurrences(0)
+          return
+        }
+
+        const meData = (await meResponse.json()) as MeResponse
+        if (!meData.username) {
+          setActiveUserPreference(null)
+          setSavedPreferences([])
+          setMaxPreferenceOccurrences(0)
+          return
+        }
+
+        const params = new URLSearchParams({
+          username: meData.username,
+          key: DEVICE_DATA_SELECTED_COLUMNS,
+        })
+
+        const preferenceResponse = await fetch(`/api/auth/me/preferences?${params.toString()}`)
+        if (!preferenceResponse.ok) {
+          setActiveUserPreference(null)
+          setSavedPreferences([])
+          setMaxPreferenceOccurrences(0)
+          return
+        }
+
+        const preferenceData = (await preferenceResponse.json()) as PreferenceResponse
+        const bucket = preferenceData.data ?? null
+
+        setActiveUserPreference(bucket)
+        setSavedPreferences(bucket?.list ?? [])
+        setMaxPreferenceOccurrences(preferenceData.maxListItems ?? 0)
+
+        if (bucket?.last?.content) {
+          applySelectedColumnsPreference(bucket.last.content as SelectedColumnsPreferenceContent)
+        }
+      } catch {
+        setActiveUserPreference(null)
+        setSavedPreferences([])
+        setMaxPreferenceOccurrences(0)
+      }
+    }
+
+    loadActiveUserPreference()
+  }, [applySelectedColumnsPreference])
+
+  const handleColumnVisibilityChange = React.useCallback(
+    (columnId: string, checked: boolean) => {
+      const currentVisibility = table.getState().columnVisibility
+      const nextVisibility: VisibilityState = {
+        ...currentVisibility,
+        [columnId]: checked,
+      }
+
+      const visibleColumnIds = buildVisibleColumnIdsFromState(nextVisibility)
+      table.setColumnVisibility(nextVisibility)
+
+      saveColumnPreference({
+        name: "last",
+        index: null,
+        command: "last",
+        visibleColumnIds,
+      }).catch(() => {})
+    },
+    [buildVisibleColumnIdsFromState, saveColumnPreference, table]
+  )
+
   const selectedCount = table.getFilteredSelectedRowModel().rows.length
   const appliesLabel = selectedCount > 0 ? `Selected (${selectedCount})` : "None"
   const selectedIds = table
@@ -343,6 +592,39 @@ export function DataTable<TData, TValue>({
       }))
   }, [table, columnVisibility])
 
+  const reportColumnsTitle = React.useMemo(() => {
+    return table
+      .getVisibleLeafColumns()
+      .filter((column) => column.id !== "select")
+      .map((column) => {
+        const header = column.columnDef.header
+        return typeof header === "string" ? header : column.id
+      })
+  }, [table, columnVisibility])
+
+  const reportFields = React.useMemo(() => {
+    const visibleColumns = table
+      .getVisibleLeafColumns()
+      .filter((column) => column.id !== "select")
+
+    return table.getFilteredRowModel().rows.map((row) => ({
+      selected: row.getIsSelected(),
+      content: visibleColumns.map((column) => {
+        const value = row.getValue(column.id)
+
+        if (value === null || value === undefined || value === "") {
+          return "-"
+        }
+
+        if (value instanceof Date) {
+          return value.toLocaleDateString("en-US")
+        }
+
+        return String(value)
+      }),
+    }))
+  }, [table, columnVisibility, rowSelection, columnFilters, sorting, data])
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between py-4">
@@ -386,39 +668,54 @@ export function DataTable<TData, TValue>({
               <FileDown className="h-4 w-4" />
               Export CSV
             </Button>
-            {/* <Button variant="outline" size="sm" className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setIsReportOpen(true)}
+            >
               <Printer className="h-4 w-4" />
-              Print
-            </Button> */}
+              Report
+            </Button>
           </div>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                )
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Columns <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        handleColumnVisibilityChange(column.id, Boolean(value))
+                      }
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  )
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DataSettingsMenu
+            hasLastPreference={Boolean(activeUserPreference?.last)}
+            savedPreferences={savedPreferences}
+            onLoadLast={() => loadColumnPreference("last")}
+            onLoadSaved={(index) => loadColumnPreference(index)}
+            onSaveCurrent={() => setOpenSavePreferences(true)}
+          />
+        </div>
       </div>
       <div className="rounded-md border">
         <Table>
@@ -689,6 +986,29 @@ export function DataTable<TData, TValue>({
           label: field.label,
         }))}
         appliedFilters={appliedFilters}
+      />
+
+      <ReportForm
+        open={isReportOpen}
+        onOpenChange={setIsReportOpen}
+        reportName={DEVICE_REPORT_DATA}
+        columnsTitle={reportColumnsTitle}
+        fields={reportFields}
+      />
+
+      <SavePreferencesForm
+        open={openSavePreferences}
+        onOpenChange={setOpenSavePreferences}
+        preferences={savedPreferences}
+        maxOccurrences={maxPreferenceOccurrences}
+        isSubmitting={isSavingPreference}
+        onConfirm={({ name, index }) =>
+          saveColumnPreference({
+            name,
+            index,
+            command: "new",
+          })
+        }
       />
     </div>
   )

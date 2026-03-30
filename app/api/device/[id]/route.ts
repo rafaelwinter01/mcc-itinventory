@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db"
+import { saveHistory } from "@/db/historyServices"
+import { getSession } from "@/lib/session"
 import {
   device,
   deviceType,
@@ -10,7 +12,6 @@ import {
   attribute,
   deviceComputer,
   deviceLifecycle,
-  history,
   userDevice,
   user,
 } from "@/db/schema"
@@ -38,8 +39,66 @@ type RouteContext = {
   params: Promise<{ id: string }>
 }
 
+const toDateKey = (value: Date | string | null | undefined) => {
+  if (!value) return null
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0")
+  const day = String(date.getUTCDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+const normalizeText = (value: string | null | undefined) => {
+  if (value === null || value === undefined) return null
+  const normalized = value.trim()
+  return normalized === "" ? null : normalized
+}
+
+const isLifecycleEqual = (
+  previous:
+    | {
+        purchaseDate: Date | null
+        endOfLife: Date | null
+        expectedReplacementYear: number | null
+        planDescription: string | null
+        extraNotes: string | null
+        billedTo: number | null
+        costTo: number | null
+      }
+    | null,
+  next: {
+    purchaseDate: Date | null
+    endOfLife: Date | null
+    expectedReplacementYear: number | null
+    planDescription: string | null
+    extraNotes: string | null
+    billedTo: number | null
+    costTo: number | null
+  }
+) => {
+  if (!previous) return false
+
+  return (
+    toDateKey(previous.purchaseDate) === toDateKey(next.purchaseDate) &&
+    toDateKey(previous.endOfLife) === toDateKey(next.endOfLife) &&
+    previous.expectedReplacementYear === next.expectedReplacementYear &&
+    normalizeText(previous.planDescription) === normalizeText(next.planDescription) &&
+    normalizeText(previous.extraNotes) === normalizeText(next.extraNotes) &&
+    previous.billedTo === next.billedTo &&
+    previous.costTo === next.costTo
+  )
+}
+
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
+    const sessionUser = await getSession()
+
+    if (!sessionUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { id } = await context.params
     const deviceId = Number(id)
 
@@ -125,6 +184,12 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
+    const sessionUser = await getSession()
+
+    if (!sessionUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { id } = await context.params
     const deviceId = Number(id)
 
@@ -160,6 +225,11 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       )
     }
 
+    let hasUserAssignmentChange = false
+    let hasLifecycleChange = false
+    let previousAssignedUserId: number | null = null
+    let nextAssignedUserId: number | null = null
+
     await db.transaction(async (tx) => {
       await tx
         .update(device)
@@ -189,11 +259,16 @@ export async function PUT(request: NextRequest, context: RouteContext) {
           ? Number(deviceData.assignedUserId)
           : null
 
+      nextAssignedUserId = newUserId
+
       const [currentAssignment] = await tx
         .select()
         .from(userDevice)
         .where(and(eq(userDevice.deviceId, deviceId), eq(userDevice.assigned, true)))
         .limit(1)
+
+      previousAssignedUserId = currentAssignment?.userId ?? null
+      hasUserAssignmentChange = previousAssignedUserId !== nextAssignedUserId
 
       if (currentAssignment && currentAssignment.userId !== newUserId) {
         await tx
@@ -246,6 +321,20 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         costTo: deviceData.costTo ? Number(deviceData.costTo) : null,
       }
 
+      const [currentLifecycle] = await tx
+        .select({
+          purchaseDate: deviceLifecycle.purchaseDate,
+          endOfLife: deviceLifecycle.endOfLife,
+          expectedReplacementYear: deviceLifecycle.expectedReplacementYear,
+          planDescription: deviceLifecycle.planDescription,
+          extraNotes: deviceLifecycle.extraNotes,
+          billedTo: deviceLifecycle.billedTo,
+          costTo: deviceLifecycle.costTo,
+        })
+        .from(deviceLifecycle)
+        .where(eq(deviceLifecycle.deviceId, deviceId))
+        .limit(1)
+
       const hasLifecycleData =
         lifecyclePayload.purchaseDate !== null ||
         lifecyclePayload.endOfLife !== null ||
@@ -254,6 +343,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         lifecyclePayload.extraNotes !== null ||
         lifecyclePayload.billedTo !== null ||
         lifecyclePayload.costTo !== null
+
+      hasLifecycleChange = hasLifecycleData
+        ? !isLifecycleEqual(currentLifecycle ?? null, lifecyclePayload)
+        : Boolean(currentLifecycle)
 
       await tx.delete(deviceLifecycle).where(eq(deviceLifecycle.deviceId, deviceId))
 
@@ -264,13 +357,35 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         })
       }
 
-      await tx.insert(history).values({
-        userId: null,
+    })
+
+    await saveHistory({
+      userId: sessionUser.userId,
+      action: "UPDATE",
+      entityName: "device",
+      description: `Updated device: ${deviceData.name}`,
+      entityId: deviceId,
+    })
+
+    if (hasUserAssignmentChange) {
+      await saveHistory({
+        userId: sessionUser.userId,
+        action: "ASSIGN",
+        entityName: "device",
+        description: `Changed assigned user from ${previousAssignedUserId ?? "none"} to ${nextAssignedUserId ?? "none"}`,
+        entityId: deviceId,
+      })
+    }
+
+    if (hasLifecycleChange) {
+      await saveHistory({
+        userId: sessionUser.userId,
         action: "UPDATE",
         entityName: "device",
-        description: `Updated device: ${deviceData.name}`,
+        description: "Updated lifecycle data",
+        entityId: deviceId,
       })
-    })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

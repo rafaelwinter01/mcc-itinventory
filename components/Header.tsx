@@ -43,18 +43,22 @@ export function Header() {
           </Link>
           <div className="text-xl font-semibold ml-3">IT - Inventory</div>
         </div>
-
+        <div className="flex-1 flex justify-center gap-2 md:flex">
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/workstation">Workstations</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/device">Devices</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/user">Users</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/license">Licenses</Link>
+          </Button>
+        </div>
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => setWorkstationOpen(true)}
-        >
-          <Monitor className="h-4 w-4" />
-          Manage Workstation
-        </Button>
-        <Settings />
+        {/* <Settings /> */}
         <button
           onClick={toggleTheme}
           className="p-2 rounded-md hover:bg-accent transition-colors"
@@ -73,8 +77,7 @@ export function Header() {
         <UserNav />
       </div>
       </div>
-
-      <WorkstationForm open={workstationOpen} onOpenChange={setWorkstationOpen} />
+      
     </header>
   )
 }

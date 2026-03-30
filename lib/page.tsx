@@ -167,6 +167,7 @@ export default function NewDevicePage() {
 
       const response = await fetch("/api/device", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
