@@ -333,6 +333,7 @@ export const systemUser = mysqlTable("system_user", {
   userId: int("user_id").notNull().unique(),
   username: varchar("username", { length: 100 }).notNull().unique(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  invitationHash: varchar("invitation_hash", { length: 64 }),
   role: mysqlEnum("role", ["admin", "common"]).default("common"),
   isActive: int("is_active").default(1),
   preferences: json("preferences").default(sql`(JSON_OBJECT())`),
