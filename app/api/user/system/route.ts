@@ -3,12 +3,32 @@ import { db } from "@/db";
 import { user as userTable, systemUser, history } from "@/db/schema";
 import { eq, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { getSession } from "@/lib/session";
+
+async function requireAdminSession() {
+  const sessionUser = await getSession();
+
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (sessionUser.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return null;
+}
 
 /**
  * GET route to fetch system user by userId
  */
 export async function GET(request: NextRequest) {
   try {
+    const authError = await requireAdminSession();
+    if (authError) {
+      return authError;
+    }
+
     const { searchParams } = new URL(request.url);
     console.log("Fetching system user", searchParams.toString());
     const userId = searchParams.get("userId");
@@ -61,6 +81,11 @@ function generatePassword(length = 12): string {
  */
 export async function PUT(request: NextRequest) {
   try {
+    const authError = await requireAdminSession();
+    if (authError) {
+      return authError;
+    }
+
     const body = await request.json();
     const { email, username, role } = body;
 
@@ -144,6 +169,11 @@ export async function PUT(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAdminSession();
+    if (authError) {
+      return authError;
+    }
+
     const body = await request.json();
     const { email, username, role } = body;
 

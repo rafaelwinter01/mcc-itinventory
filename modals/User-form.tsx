@@ -66,6 +66,10 @@ type UserLicenseItem = {
   createdAt: string
 }
 
+type SessionUser = {
+  role?: string | null
+}
+
 const formSchema = z.object({
   firstname: z.string().min(1, "First name is required").max(100, "First name is too long"),
   lastname: z.string().min(1, "Last name is required").max(100, "Last name is too long"),
@@ -86,6 +90,7 @@ export function UserForm({ open, onOpenChange, onSuccess, editUser }: UserFormPr
   const [loading, setLoading] = useState(false)
   const [departments, setDepartments] = useState<Department[]>([])
   const [loadingDepts, setLoadingDepts] = useState(false)
+  const [canManageSystemAccess, setCanManageSystemAccess] = useState(false)
   const [systemUser, setSystemUser] = useState<SystemUser | null>(null)
   const [loadingSystemUser, setLoadingSystemUser] = useState(false)
   const [showSystemUserModal, setShowSystemUserModal] = useState(false)
@@ -107,7 +112,7 @@ export function UserForm({ open, onOpenChange, onSuccess, editUser }: UserFormPr
   useEffect(() => {
     if (open) {
       fetchDepartments()
-      fetchSystemUser()
+      fetchSessionUserRole()
       fetchUserLicenses()
       
       if (editUser) {
@@ -125,8 +130,35 @@ export function UserForm({ open, onOpenChange, onSuccess, editUser }: UserFormPr
           departmentId: "",
         })
       }
+    } else {
+      setCanManageSystemAccess(false)
+      setSystemUser(null)
     }
   }, [open, form, editUser, editUser?.id])
+
+  useEffect(() => {
+    if (open && canManageSystemAccess) {
+      fetchSystemUser()
+    } else {
+      setSystemUser(null)
+    }
+  }, [open, canManageSystemAccess, editUser?.id])
+
+  const fetchSessionUserRole = async () => {
+    try {
+      const response = await fetch("/api/auth/me")
+      if (!response.ok) {
+        setCanManageSystemAccess(false)
+        return
+      }
+
+      const data = (await response.json()) as SessionUser
+      setCanManageSystemAccess(data.role === "admin")
+    } catch (error) {
+      console.error("Error fetching current session role:", error)
+      setCanManageSystemAccess(false)
+    }
+  }
 
   const fetchDepartments = async () => {
     setLoadingDepts(true)
@@ -403,7 +435,7 @@ export function UserForm({ open, onOpenChange, onSuccess, editUser }: UserFormPr
               </div>
             )}
             
-            {editUser && (
+            {editUser && canManageSystemAccess && (
               <div className="space-y-2">
                 <div className="text-sm font-medium">System Access</div>
                 {loadingSystemUser ? (
@@ -453,7 +485,7 @@ export function UserForm({ open, onOpenChange, onSuccess, editUser }: UserFormPr
         </Form>
       </DialogContent>
 
-      {editUser && (
+      {editUser && canManageSystemAccess && (
         <SystemUserForm
           open={showSystemUserModal}
           onOpenChange={setShowSystemUserModal}
