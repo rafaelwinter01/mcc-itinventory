@@ -5,15 +5,16 @@ import {
   UserLicenseDataFilterBar,
   type UserLicenseFilterState,
 } from "@/components/user-license-data-filter-bar"
+import { serverApiFetch } from "@/lib/server-api"
 
 async function getData(searchParams?: URLSearchParams): Promise<UserLicenseRow[]> {
   try {
     const queryString = searchParams?.toString()
-    const url = queryString
-      ? `http://localhost:3000/api/user-license?${queryString}&limit=1000`
-      : "http://localhost:3000/api/user-license?limit=1000"
+    const path = queryString
+      ? `/api/user-license?${queryString}&limit=1000`
+      : "/api/user-license?limit=1000"
 
-    const response = await fetch(url, {
+    const response = await serverApiFetch(path, {
       cache: "no-store",
     })
 
@@ -33,8 +34,8 @@ async function getData(searchParams?: URLSearchParams): Promise<UserLicenseRow[]
 async function getFilterOptions() {
   try {
     const [usersRes, licensesRes] = await Promise.all([
-      fetch("http://localhost:3000/api/user"),
-      fetch("http://localhost:3000/api/license"),
+      serverApiFetch("/api/user"),
+      serverApiFetch("/api/license"),
     ])
 
     const [usersPayload, licensesPayload] = await Promise.all([

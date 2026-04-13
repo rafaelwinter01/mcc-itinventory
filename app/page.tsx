@@ -1,4 +1,6 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
+import { serverApiFetch } from "@/lib/server-api"
 import {
   ArrowUpRight,
   BadgeCheck,
@@ -56,8 +58,13 @@ const formatDateTime = (value: string | null) => {
 }
 
 export default async function Home() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
-  const response = await fetch(`${baseUrl}/api/main`, { cache: "no-store" })
+  const response = await serverApiFetch("/api/main", {
+    cache: "no-store",
+  })
+
+  if (response.status === 401) {
+    redirect("/login")
+  }
 
   if (!response.ok) {
     throw new Error("Failed to load dashboard data.")

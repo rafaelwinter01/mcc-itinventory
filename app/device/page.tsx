@@ -11,6 +11,8 @@ import {
 } from "@/lib/device-constants"
 import { CARD_MODEL, CARD_MODEL_KEYS } from "@/constants/preferences"
 import { getSession } from "@/lib/session"
+import { serverApiFetch } from "@/lib/server-api"
+import { redirect } from "next/navigation"
 import {
 	Pagination,
 	PaginationContent,
@@ -110,7 +112,6 @@ export default async function DevicePage(props: DevicePageProps) {
 	const currentPage = Math.max(1, Number(pageParam) || 1)
 	const limit = DEVICES_PER_PAGE
 	const offset = (currentPage - 1) * limit
-	const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
 	let cardVariant: DeviceCardProps["variant"] = CARD_MODEL_KEYS.DEFAULT
 
@@ -120,8 +121,8 @@ export default async function DevicePage(props: DevicePageProps) {
 			key: CARD_MODEL,
 		})
 
-		const preferenceResponse = await fetch(
-			`${baseUrl}/api/auth/me/preferences?${preferenceQuery.toString()}`,
+		const preferenceResponse = await serverApiFetch(
+			`/api/auth/me/preferences?${preferenceQuery.toString()}`,
 			{ cache: "no-store" }
 		)
 
@@ -174,9 +175,13 @@ export default async function DevicePage(props: DevicePageProps) {
 		query.set("warrantyEndEnd", filterState.warrantyEnd)
 	}
 
-	const response = await fetch(`${baseUrl}/api/device?${query.toString()}`, {
+	const response = await serverApiFetch(`/api/device?${query.toString()}`, {
 		cache: "no-store",
 	})
+
+	if (response.status === 401) {
+		redirect("/login")
+	}
 
 	if (!response.ok) {
 		throw new Error("Failed to load device list.")

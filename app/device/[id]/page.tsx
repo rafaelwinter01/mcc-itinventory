@@ -1,5 +1,4 @@
-import { notFound } from "next/navigation"
-import { cookies } from "next/headers"
+import { notFound, redirect } from "next/navigation"
 
 import { DeviceDetails, type DeviceDetailsRecord } from "@/components/device-details"
 import {
@@ -7,37 +6,17 @@ import {
   DEVICE_PAGE_MODEL_KEYS,
 } from "@/constants/preferences"
 import { getSession } from "@/lib/session"
-
-const normalizeBaseUrl = (url: string) => url.replace(/\/$/, "")
-
-const resolveBaseUrl = () => {
-  const explicitUrl =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.APP_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
-
-  if (!explicitUrl) {
-    return ""
-  }
-
-  return normalizeBaseUrl(explicitUrl)
-}
+import { serverApiFetch } from "@/lib/server-api"
 
 const fetchDeviceDetails = async (deviceId: number): Promise<DeviceDetailsRecord> => {
-  const baseUrl = resolveBaseUrl()
-  const endpoint = baseUrl
-    ? `${baseUrl}/api/device/${deviceId}`
-    : `http://localhost:3000/api/device/${deviceId}`
-  const cookieHeader = (await cookies())
-    .getAll()
-    .map((cookie) => `${cookie.name}=${cookie.value}`)
-    .join("; ")
-
-  const response = await fetch(endpoint, {
+  const response = await serverApiFetch(`/api/device/${deviceId}`, {
     cache: "no-store",
     next: { revalidate: 0 },
-    headers: cookieHeader ? { cookie: cookieHeader } : undefined,
   })
+
+  if (response.status === 401) {
+    redirect("/login")
+  }
 
   if (response.status === 404) {
     notFound()
@@ -102,7 +81,6 @@ export default async function DeviceDetailsPage({ params }: DevicePageProps) {
   const deviceData = await fetchDeviceDetails(deviceId)
 
   const sessionUser = await getSession()
-  const baseUrl = resolveBaseUrl() || "http://localhost:3000"
   let pageVariant: "default" | "compact" = DEVICE_PAGE_MODEL_KEYS.DEFAULT
 
   if (sessionUser?.username) {
@@ -111,8 +89,8 @@ export default async function DeviceDetailsPage({ params }: DevicePageProps) {
       key: DEVICE_PAGE_MODEL,
     })
 
-    const preferenceResponse = await fetch(
-      `${baseUrl}/api/auth/me/preferences?${preferenceQuery.toString()}`,
+    const preferenceResponse = await serverApiFetch(
+      `/api/auth/me/preferences?${preferenceQuery.toString()}`,
       {
         cache: "no-store",
         next: { revalidate: 0 },

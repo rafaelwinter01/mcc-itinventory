@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import type { FormEvent } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -200,6 +201,11 @@ export default function LoginPage() {
                     "Continue"
                   )}
                 </Button>
+                <div className="text-center">
+                  <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
               </form>
             </Form>
           ) : (

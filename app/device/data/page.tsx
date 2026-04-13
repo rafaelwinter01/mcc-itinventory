@@ -3,29 +3,28 @@ import { DataTable } from "./data-table"
 import { columns, Device } from "./columns"
 import { DeviceDataFilterBar } from "@/components/device-data-filter-bar"
 import { type DeviceFilterState } from "@/lib/device-constants"
+import { serverApiFetch } from "@/lib/server-api"
 
 async function getData(searchParams?: URLSearchParams): Promise<Device[]> {
   try {
     const queryString = searchParams?.toString()
-    const url = queryString
-      ? `http://localhost:3000/api/device?${queryString}&limit=1000`
-      : "http://localhost:3000/api/device?limit=1000"
+    const path = queryString
+      ? `/api/device?${queryString}&limit=1000`
+      : "/api/device?limit=1000"
 
-
-      console.log('Fetching devices from URL:', url)
-    const response = await fetch(url, {
-      cache: 'no-store' // Ensure fresh data on each request
+    const response = await serverApiFetch(path, {
+      cache: "no-store"
     })
     
     if (!response.ok) {
-      throw new Error('Failed to fetch devices')
+      throw new Error("Failed to fetch devices")
     }
 
     const data = await response.json()
 
     return data.data
   } catch (error) {
-    console.error('Error fetching devices:', error)
+    console.error("Error fetching devices:", error)
     return []
   }
 }
@@ -33,10 +32,10 @@ async function getData(searchParams?: URLSearchParams): Promise<Device[]> {
 async function getFilterOptions() {
   try {
     const [deviceTypesRes, statusRes, locationsRes, makeModelsRes] = await Promise.all([
-      fetch("http://localhost:3000/api/devicetype"),
-      fetch("http://localhost:3000/api/status"),
-      fetch("http://localhost:3000/api/location"),
-      fetch("http://localhost:3000/api/makemodel"),
+      serverApiFetch("/api/devicetype"),
+      serverApiFetch("/api/status"),
+      serverApiFetch("/api/location"),
+      serverApiFetch("/api/makemodel"),
     ])
 
     const [deviceTypes, statuses, locations, makeModels] = await Promise.all([

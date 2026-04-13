@@ -4,6 +4,8 @@ import { WorkstationList } from "@/components/workstation-list"
 import { WorkstationPageHeader } from "@/components/workstation-page-header"
 import { CARD_MODEL, CARD_MODEL_KEYS } from "@/constants/preferences"
 import { getSession } from "@/lib/session"
+import { serverApiFetch } from "@/lib/server-api"
+import { redirect } from "next/navigation"
 import {
 	Pagination,
 	PaginationContent,
@@ -112,8 +114,6 @@ export default async function WorkstationPage(props: WorkstationPageProps) {
 		query.set("attributeValue", filterState.attributeValue)
 	}
 
-	const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
-
 	let cardVariant: WorkstationCardProps["variant"] = CARD_MODEL_KEYS.DEFAULT
 
 	if (sessionUser?.username) {
@@ -122,8 +122,8 @@ export default async function WorkstationPage(props: WorkstationPageProps) {
 			key: CARD_MODEL,
 		})
 
-		const preferenceResponse = await fetch(
-			`${baseUrl}/api/auth/me/preferences?${preferenceQuery.toString()}`,
+		const preferenceResponse = await serverApiFetch(
+			`/api/auth/me/preferences?${preferenceQuery.toString()}`,
 			{ cache: "no-store" }
 		)
 
@@ -133,9 +133,13 @@ export default async function WorkstationPage(props: WorkstationPageProps) {
 		}
 	}
 
-	const response = await fetch(`${baseUrl}/api/workstation?${query.toString()}`, {
+	const response = await serverApiFetch(`/api/workstation?${query.toString()}`, {
 		cache: "no-store",
 	})
+
+	if (response.status === 401) {
+		redirect("/login")
+	}
 
 	if (!response.ok) {
 		throw new Error("Failed to load workstation list.")
