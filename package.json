@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "bootstrap-admin": "npx tsx scripts/bootstrap-admin.ts"
+    "bootstrap-admin": "npx tsx scripts/bootstrap-admin.ts",
+    "bootstrap-admin:run": "powershell -ExecutionPolicy Bypass -File scripts/run-bootstrap-admin.ps1"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

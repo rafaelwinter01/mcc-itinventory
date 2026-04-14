@@ -20,7 +20,10 @@ import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
 import { createHash, randomBytes } from "crypto";
+// import { loadEnvConfig } from "@next/env";
 import { history, systemUser, user as userTable } from "../db/schema";
+
+// loadEnvConfig(process.cwd());
 
 // ─── Guard: required env vars ────────────────────────────────────────────────
 
