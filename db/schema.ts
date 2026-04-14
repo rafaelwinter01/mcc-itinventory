@@ -7,7 +7,6 @@ import {
   json,
   mysqlTable,
   primaryKey,
-  serial,
   text,
   uniqueIndex,
   varchar,
@@ -19,7 +18,7 @@ import { relations, sql } from "drizzle-orm";
 export const deviceType = mysqlTable(
   "device_type",
   {
-    id: serial("id").primaryKey(),
+    id: int("id").autoincrement().primaryKey(),
     name: varchar("name", { length: 100 }).notNull(),
   },
   (table) => ({
@@ -30,7 +29,7 @@ export const deviceType = mysqlTable(
 export const status = mysqlTable(
   "status",
   {
-    id: serial("id").primaryKey(),
+    id: int("id").autoincrement().primaryKey(),
     name: varchar("name", { length: 100 }).notNull(),
     color: varchar("color", { length: 50 }),
   },
@@ -40,7 +39,7 @@ export const status = mysqlTable(
 );
 
 export const department = mysqlTable("department", {
-  id: serial("id").primaryKey(),
+  id: int("id").autoincrement().primaryKey(),
   name: text("name"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
@@ -49,7 +48,7 @@ export const department = mysqlTable("department", {
 export const user = mysqlTable(
   "user",
   {
-    id: serial("id").primaryKey(),
+    id: int("id").autoincrement().primaryKey(),
     firstname: text("firstname").notNull(),
     lastname: text("lastname").notNull(),
     email: varchar("email", { length: 255 }),
@@ -63,14 +62,14 @@ export const user = mysqlTable(
 );
 
 export const location = mysqlTable("location", {
-  id: serial("id").primaryKey(),
+  id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 150 }).notNull(),
   address: text("address"),
   managerId: int("manager_id"),
 });
 
 export const makeModel = mysqlTable("make_model", {
-  id: serial("id").primaryKey(),
+  id: int("id").autoincrement().primaryKey(),
   make: varchar("make", { length: 100 }).notNull(),
   model: varchar("model", { length: 100 }).notNull(),
   deviceTypeId: int("device_type_id").references(() => deviceType.id, {
@@ -81,7 +80,7 @@ export const makeModel = mysqlTable("make_model", {
 });
 
 export const device = mysqlTable("device", {
-  id: serial("id").primaryKey(),
+  id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 150 }).notNull(),
   deviceTypeId: int("device_type_id").notNull(),
   locationId: int("location_id"),
@@ -103,7 +102,7 @@ export const device = mysqlTable("device", {
 });
 
 export const deviceLifecycle = mysqlTable("device_lifecycle", {
-  id: serial("id").primaryKey(),
+  id: int("id").autoincrement().primaryKey(),
   deviceId: int("device_id")
     .notNull()
     .unique()
@@ -135,7 +134,7 @@ export const deviceComputer = mysqlTable("device_computer", {
 });
 
 export const userDevice = mysqlTable("user_device", {
-  id: serial("id").primaryKey(),
+  id: int("id").autoincrement().primaryKey(),
   userId: int("user_id").notNull(),
   deviceId: int("device_id").notNull(),
   dateAssignment: date("date_assignment"),
@@ -143,12 +142,12 @@ export const userDevice = mysqlTable("user_device", {
 });
 
 export const peripheral = mysqlTable("peripheral", {
-  id: serial("id").primaryKey(),
+  id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 150 }).notNull(),
 });
 
 export const workstation = mysqlTable("workstation", {
-  id: serial("id").primaryKey(),
+  id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   info: json("info"),
@@ -159,7 +158,7 @@ export const workstation = mysqlTable("workstation", {
 export const workstationUser = mysqlTable(
   "workstation_user",
   {
-    id: serial("id").primaryKey(),
+    id: int("id").autoincrement().primaryKey(),
 
     workstationId: int("workstation_id")
       .notNull()
@@ -203,7 +202,7 @@ export const workstationPeripherical = mysqlTable(
 );
 
 export const license = mysqlTable("license", {
-  id: serial("id").primaryKey(),
+  id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 150 }).notNull(),
   description: text("description"),
   cost: decimal("cost", { precision: 10, scale: 2 }),
@@ -229,7 +228,7 @@ export const userLicense = mysqlTable(
 );
 
 export const attribute = mysqlTable("attribute", {
-  id: serial("id").primaryKey(),
+  id: int("id").autoincrement().primaryKey(),
   deviceId: int("device_id"),
   key: varchar("key", { length: 100 }),
   value: text("value"),
@@ -319,7 +318,7 @@ export const workstationRelations = relations(workstation, ({ many }) => ({
 }));
 
 export const history = mysqlTable("history", {
-  id: serial("id").primaryKey(),
+  id: int("id").autoincrement().primaryKey(),
   userId: int("user_id"),
   action: varchar("action", { length: 255 }).notNull(),
   entityName: varchar("entity_name", { length: 255 }).notNull(),

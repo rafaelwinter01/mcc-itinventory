@@ -1,5 +1,5 @@
 CREATE TABLE `attribute` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`device_id` int,
 	`key` varchar(100),
 	`value` text,
@@ -7,7 +7,7 @@ CREATE TABLE `attribute` (
 );
 --> statement-breakpoint
 CREATE TABLE `department` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`name` text,
 	`created_at` datetime DEFAULT CURRENT_TIMESTAMP,
 	`updated_at` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -15,7 +15,7 @@ CREATE TABLE `department` (
 );
 --> statement-breakpoint
 CREATE TABLE `device` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`name` varchar(150) NOT NULL,
 	`device_type_id` int NOT NULL,
 	`location_id` int,
@@ -46,7 +46,7 @@ CREATE TABLE `device_computer` (
 );
 --> statement-breakpoint
 CREATE TABLE `device_lifecycle` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`device_id` int NOT NULL,
 	`purchase_date` date,
 	`end_of_life` date,
@@ -62,14 +62,14 @@ CREATE TABLE `device_lifecycle` (
 );
 --> statement-breakpoint
 CREATE TABLE `device_type` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`name` varchar(100) NOT NULL,
 	CONSTRAINT `device_type_id` PRIMARY KEY(`id`),
 	CONSTRAINT `device_type_name_idx` UNIQUE(`name`)
 );
 --> statement-breakpoint
 CREATE TABLE `history` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int,
 	`action` varchar(255) NOT NULL,
 	`entity_name` varchar(255) NOT NULL,
@@ -80,7 +80,7 @@ CREATE TABLE `history` (
 );
 --> statement-breakpoint
 CREATE TABLE `license` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`name` varchar(150) NOT NULL,
 	`description` text,
 	`cost` decimal(10,2),
@@ -91,7 +91,7 @@ CREATE TABLE `license` (
 );
 --> statement-breakpoint
 CREATE TABLE `location` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`name` varchar(150) NOT NULL,
 	`address` text,
 	`manager_id` int,
@@ -99,7 +99,7 @@ CREATE TABLE `location` (
 );
 --> statement-breakpoint
 CREATE TABLE `make_model` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`make` varchar(100) NOT NULL,
 	`model` varchar(100) NOT NULL,
 	`device_type_id` int,
@@ -108,7 +108,7 @@ CREATE TABLE `make_model` (
 );
 --> statement-breakpoint
 CREATE TABLE `peripheral` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`name` varchar(150) NOT NULL,
 	CONSTRAINT `peripheral_id` PRIMARY KEY(`id`)
 );
@@ -122,7 +122,7 @@ CREATE TABLE `session` (
 );
 --> statement-breakpoint
 CREATE TABLE `status` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`name` varchar(100) NOT NULL,
 	`color` varchar(50),
 	CONSTRAINT `status_id` PRIMARY KEY(`id`),
@@ -146,7 +146,7 @@ CREATE TABLE `system_user` (
 );
 --> statement-breakpoint
 CREATE TABLE `user` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`firstname` text NOT NULL,
 	`lastname` text NOT NULL,
 	`email` varchar(255),
@@ -158,7 +158,7 @@ CREATE TABLE `user` (
 );
 --> statement-breakpoint
 CREATE TABLE `user_device` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`device_id` int NOT NULL,
 	`date_assignment` date,
@@ -178,7 +178,7 @@ CREATE TABLE `user_license` (
 );
 --> statement-breakpoint
 CREATE TABLE `workstation` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`name` varchar(255) NOT NULL,
 	`description` text,
 	`info` json,
@@ -201,7 +201,7 @@ CREATE TABLE `workstation_peripheral` (
 );
 --> statement-breakpoint
 CREATE TABLE `workstation_user` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` int AUTO_INCREMENT NOT NULL,
 	`workstation_id` int NOT NULL,
 	`user_id` int NOT NULL,
 	`created_at` datetime DEFAULT CURRENT_TIMESTAMP,
