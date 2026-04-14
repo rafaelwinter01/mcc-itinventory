@@ -52,7 +52,7 @@ export const user = mysqlTable(
     id: serial("id").primaryKey(),
     firstname: text("firstname").notNull(),
     lastname: text("lastname").notNull(),
-    email: text("email"),
+    email: varchar("email", { length: 255 }),
     departmentId: int("department_id").references(() => department.id),
     createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
     updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),

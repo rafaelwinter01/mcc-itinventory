@@ -149,7 +149,7 @@ CREATE TABLE `user` (
 	`id` serial AUTO_INCREMENT NOT NULL,
 	`firstname` text NOT NULL,
 	`lastname` text NOT NULL,
-	`email` text,
+	`email` varchar(255),
 	`department_id` int,
 	`created_at` datetime DEFAULT CURRENT_TIMESTAMP,
 	`updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
