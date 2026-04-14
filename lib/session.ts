@@ -2,7 +2,7 @@
 import { db } from "@/db";
 import { session, systemUser, user } from "@/db/schema";
 import { v4 as uuid } from "uuid";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, lt } from "drizzle-orm";
 import { cookies } from "next/headers";
 
 export const SESSION_COOKIE_NAME = "session_id";
@@ -137,7 +137,7 @@ export async function cleanupExpiredSessions() {
   try {
     const result = await db
       .delete(session)
-      .where(session.expiresAt < new Date());
+      .where(lt(session.expiresAt, new Date()));
 
     console.log("Cleaned up expired sessions");
     return result;

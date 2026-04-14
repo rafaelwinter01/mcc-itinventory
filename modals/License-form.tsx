@@ -49,6 +49,15 @@ const billingFrequencyOptions = [
 	"Does not apply",
 ] as const
 
+type BillingFrequencyOption = (typeof billingFrequencyOptions)[number]
+
+function toBillingFrequencyValue(value: string | null | undefined): BillingFrequencyOption | "" {
+	if (!value) return ""
+	return billingFrequencyOptions.includes(value as BillingFrequencyOption)
+		? (value as BillingFrequencyOption)
+		: ""
+}
+
 const formSchema = z.object({
 	name: z.string().min(1, "Name is required"),
 	description: z.string().optional(),
@@ -105,7 +114,7 @@ export function LicenseForm({ open, onOpenChange, onSuccess, licenseId }: Licens
 					name: data.name ?? "",
 					description: data.description ?? "",
 					cost: data.cost ?? "",
-					billingFrequency: data.billingFrequency ?? "",
+					billingFrequency: toBillingFrequencyValue(data.billingFrequency),
 				})
 			} catch (error) {
 				console.error("Error loading license:", error)

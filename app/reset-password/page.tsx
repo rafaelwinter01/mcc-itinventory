@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,7 +40,7 @@ const resetSchema = z
 
 type ResetValues = z.infer<typeof resetSchema>;
 
-export default function ResetPasswordPage() {
+function ResetPasswordPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -177,5 +177,13 @@ export default function ResetPasswordPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-[80vh] items-center justify-center" />}>
+      <ResetPasswordPageContent />
+    </Suspense>
   );
 }

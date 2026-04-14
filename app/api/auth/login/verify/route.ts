@@ -41,6 +41,7 @@ function clearSessionLast(preferences: unknown) {
 }
 
 export async function POST(req: Request) {
+  const isProduction = process.env.NODE_ENV === "production";
   const body = await req.json();
   const username = typeof body?.username === "string" ? body.username.trim() : "";
   const code = typeof body?.code === "string" ? body.code.trim() : "";
@@ -165,7 +166,7 @@ export async function POST(req: Request) {
 
   res.cookies.set(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
-    secure: true,
+    secure: isProduction,
     sameSite: "strict",
     path: "/",
     maxAge: SESSION_TTL_SECONDS,

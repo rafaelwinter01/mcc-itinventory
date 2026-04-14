@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { SESSION_COOKIE_NAME } from "@/lib/session";
 
 export async function POST() {
+  const isProduction = process.env.NODE_ENV === "production";
   const cookieStore = cookies();
   const sessionId = (await cookieStore).get(SESSION_COOKIE_NAME)?.value;
 
@@ -17,7 +18,7 @@ export async function POST() {
   const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE_NAME, "", {
     httpOnly: true,
-    secure: true,
+    secure: isProduction,
     sameSite: "strict",
     path: "/",
     maxAge: 0,

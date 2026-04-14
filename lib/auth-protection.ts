@@ -5,6 +5,7 @@
  */
 
 import { NextResponse, NextRequest } from "next/server";
+import { createElement, type ComponentType } from "react";
 import { getSession } from "@/lib/session";
 
 // ============================================================================
@@ -131,7 +132,7 @@ export async function protectAdminRoute() {
  * })
  */
 export function withPageAuth<P extends object>(
-  Component: React.ComponentType<P>
+  Component: ComponentType<P>
 ) {
   return async function ProtectedPage(props: P) {
     const session = await getSession();
@@ -141,7 +142,7 @@ export function withPageAuth<P extends object>(
       return null;
     }
 
-    return <Component {...props} />;
+    return createElement(Component, props);
   };
 }
 
@@ -152,7 +153,7 @@ export function withPageAuth<P extends object>(
  * export default withPageAuthRole(UserManagementPage, 'admin')
  */
 export function withPageAuthRole<P extends object>(
-  Component: React.ComponentType<P>,
+  Component: ComponentType<P>,
   requiredRole: string
 ) {
   return async function ProtectedPage(props: P) {
@@ -164,15 +165,15 @@ export function withPageAuthRole<P extends object>(
 
     if (session.role !== requiredRole) {
       // Renderizar página de acesso negado
-      return (
-        <div style={{ padding: "2rem", textAlign: "center" }}>
-          <h1>Acesso Negado</h1>
-          <p>Você não tem permissão para acessar esta página</p>
-        </div>
+      return createElement(
+        "div",
+        { style: { padding: "2rem", textAlign: "center" } },
+        createElement("h1", null, "Acesso Negado"),
+        createElement("p", null, "Você não tem permissão para acessar esta página")
       );
     }
 
-    return <Component {...props} />;
+    return createElement(Component, props);
   };
 }
 
