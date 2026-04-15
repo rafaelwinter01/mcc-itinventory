@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -40,8 +40,11 @@ function clearSessionLast(preferences: unknown) {
   };
 }
 
-export async function POST(req: Request) {
-  const isProduction = process.env.NODE_ENV === "production";
+export async function POST(req: NextRequest) {
+  const forwardedProto = req.headers.get("x-forwarded-proto")?.toLowerCase();
+  const isHttpsRequest = forwardedProto
+    ? forwardedProto.split(",").some((proto) => proto.trim() === "https")
+    : new URL(req.url).protocol === "https:";
   const body = await req.json();
   const username = typeof body?.username === "string" ? body.username.trim() : "";
   const code = typeof body?.code === "string" ? body.code.trim() : "";
@@ -166,7 +169,7 @@ export async function POST(req: Request) {
 
   res.cookies.set(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
-    secure: isProduction,
+    secure: isHttpsRequest,
     sameSite: "strict",
     path: "/",
     maxAge: SESSION_TTL_SECONDS,
