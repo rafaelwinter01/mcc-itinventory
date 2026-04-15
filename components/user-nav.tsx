@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { LogOut, KeyRound, User } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { ChangePasswordForm } from "@/modals/Changepassword-form"
 import { PreferencesForm } from "@/modals/Preferences-form"
 
@@ -28,9 +28,22 @@ export function UserNav() {
   const [loading, setLoading] = useState(true)
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [showPreferences, setShowPreferences] = useState(false)
+  const pathname = usePathname()
   const router = useRouter()
 
+  const isPublicRoute =
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password"
+
   useEffect(() => {
+    if (isPublicRoute) {
+      setLoading(false)
+      setUserData(null)
+      return
+    }
+
     const fetchUser = async () => {
       try {
         const response = await fetch("/api/auth/me")
@@ -46,7 +59,11 @@ export function UserNav() {
     }
 
     fetchUser()
-  }, [])
+  }, [isPublicRoute])
+
+  if (isPublicRoute) {
+    return null
+  }
 
   const handleLogout = async () => {
     try {
