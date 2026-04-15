@@ -50,6 +50,26 @@ export type DeviceRecordForForm = {
 
 const normalizeBaseUrl = (url: string) => url.replace(/\/$/, "")
 
+const normalizeInternalFetchBaseUrl = (url: string) => {
+  const normalized = normalizeBaseUrl(url)
+
+  try {
+    const parsed = new URL(normalized)
+    const isLocalhost =
+      parsed.hostname === "localhost" ||
+      parsed.hostname === "127.0.0.1" ||
+      parsed.hostname === "::1"
+
+    if (isLocalhost && parsed.protocol === "https:") {
+      parsed.protocol = "http:"
+    }
+
+    return parsed.toString().replace(/\/$/, "")
+  } catch {
+    return normalized
+  }
+}
+
 const resolveBaseUrl = () => {
   const explicitUrl =
     process.env.NEXT_PUBLIC_APP_URL ??
@@ -60,7 +80,7 @@ const resolveBaseUrl = () => {
     return ""
   }
 
-  return normalizeBaseUrl(explicitUrl)
+  return normalizeInternalFetchBaseUrl(explicitUrl)
 }
 
 export const buildDeviceEndpoint = (deviceId: number) => {

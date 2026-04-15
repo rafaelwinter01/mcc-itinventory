@@ -2,6 +2,26 @@ import { cookies, headers } from "next/headers"
 
 const normalizeBaseUrl = (url: string) => url.replace(/\/$/, "")
 
+const normalizeInternalFetchBaseUrl = (url: string) => {
+  const normalized = normalizeBaseUrl(url)
+
+  try {
+    const parsed = new URL(normalized)
+    const isLocalhost =
+      parsed.hostname === "localhost" ||
+      parsed.hostname === "127.0.0.1" ||
+      parsed.hostname === "::1"
+
+    if (isLocalhost && parsed.protocol === "https:") {
+      parsed.protocol = "http:"
+    }
+
+    return parsed.toString().replace(/\/$/, "")
+  } catch {
+    return normalized
+  }
+}
+
 export async function resolveServerBaseUrl() {
   const requestHeaders = await headers()
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host")
@@ -10,7 +30,7 @@ export async function resolveServerBaseUrl() {
   const explicitUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL
 
   if (explicitUrl) {
-    return normalizeBaseUrl(explicitUrl)
+    return normalizeInternalFetchBaseUrl(explicitUrl)
   }
 
   if (host) {
