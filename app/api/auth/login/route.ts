@@ -16,6 +16,25 @@ function hashOtpCode(code: string) {
   return createHash("sha256").update(code).digest("hex");
 }
 
+function parsePreferencesObject(raw: unknown): Record<string, unknown> {
+  if (raw && typeof raw === "object") {
+    return raw as Record<string, unknown>;
+  }
+
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === "object") {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return {};
+    }
+  }
+
+  return {};
+}
+
 async function sendOtpEmail(email: string, code: string) {
   const smtpHost = process.env.SMTP_HOST;
   const smtpPort = Number(process.env.SMTP_PORT ?? "587");
@@ -91,10 +110,7 @@ export async function POST(req: Request) {
   const codeHash = hashOtpCode(code);
   const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000).toISOString();
 
-  const preferencesObject =
-    user.preferences && typeof user.preferences === "object"
-      ? (user.preferences as Record<string, unknown>)
-      : {};
+  const preferencesObject = parsePreferencesObject(user.preferences);
   const sessionObject =
     preferencesObject.session && typeof preferencesObject.session === "object"
       ? (preferencesObject.session as Record<string, unknown>)

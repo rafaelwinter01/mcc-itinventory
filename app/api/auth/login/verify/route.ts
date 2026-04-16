@@ -20,11 +20,27 @@ function hashOtpCode(code: string) {
   return createHash("sha256").update(code).digest("hex");
 }
 
+function parsePreferencesObject(raw: unknown): Record<string, unknown> {
+  if (raw && typeof raw === "object") {
+    return raw as Record<string, unknown>;
+  }
+
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === "object") {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return {};
+    }
+  }
+
+  return {};
+}
+
 function clearSessionLast(preferences: unknown) {
-  const preferencesObject =
-    preferences && typeof preferences === "object"
-      ? (preferences as Record<string, unknown>)
-      : {};
+  const preferencesObject = parsePreferencesObject(preferences);
 
   const sessionObject =
     preferencesObject.session && typeof preferencesObject.session === "object"
@@ -67,10 +83,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
-  const preferencesObject =
-    user.preferences && typeof user.preferences === "object"
-      ? (user.preferences as Record<string, unknown>)
-      : {};
+  const preferencesObject = parsePreferencesObject(user.preferences);
 
   const sessionObject =
     preferencesObject.session && typeof preferencesObject.session === "object"
