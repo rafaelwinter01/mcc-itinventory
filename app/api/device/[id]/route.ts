@@ -102,8 +102,6 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const { id } = await context.params
     const deviceId = Number(id)
 
-    console.log("Fetching details for device ID:", deviceId)
-
     if (!Number.isInteger(deviceId) || deviceId < 1) {
       return NextResponse.json(
         { error: "A valid numeric device id is required" },
