@@ -21,8 +21,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    console.log("Creating new status with data:", body)
-
     if (!body.name || typeof body.name !== "string") {
       return NextResponse.json(
         { error: "Name is required and must be a string" },
