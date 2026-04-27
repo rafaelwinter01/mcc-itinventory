@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,7 +41,7 @@ const registerSchema = z
 
 type RegisterValues = z.infer<typeof registerSchema>;
 
-export default function RegisterPage() {
+function RegisterPageContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [loading, setLoading] = useState(false);
@@ -193,5 +193,13 @@ export default function RegisterPage() {
 				</CardFooter>
 			</Card>
 		</div>
+	);
+}
+
+export default function RegisterPage() {
+	return (
+		<Suspense fallback={<div className="flex min-h-[80vh] items-center justify-center" />}>
+			<RegisterPageContent />
+		</Suspense>
 	);
 }
