@@ -1,5 +1,6 @@
 export const DEVICE_CSV_FIELDS = [
 	"name",
+	"description",
 	"user",
 	"status",
 	"type",

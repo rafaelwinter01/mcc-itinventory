@@ -115,6 +115,7 @@ export async function POST(request: Request) {
 			const userValue = normalize(row.user)
 			const makeModelValue = normalize(row["make-model"])
 			const deviceName = normalize(row.name)
+			const deviceDescription = normalize(row.description)
 
 			const mappedRow = {
 				...row,
@@ -173,7 +174,7 @@ export async function POST(request: Request) {
 							cost: parseCost(row.cost),
 							supportSite: normalize(row.supportsite) || null,
 							driversSite: normalize(row.driverslink) || null,
-							description: null,
+							description: deviceDescription || null,
 						})
 						.$returningId()
 
