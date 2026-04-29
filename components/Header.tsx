@@ -3,21 +3,47 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useTheme } from "next-themes"
-import { Monitor, Moon, Sun } from "lucide-react"
+import { Moon, Sun } from "lucide-react"
 import { useEffect, useState } from "react"
-import { Settings } from "@/components/Settings"
 import { Button } from "@/components/ui/button"
 import { UserNav } from "@/components/user-nav"
-import { WorkstationForm } from "@/modals/Workstation-form"
 
 export function Header() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const [workstationOpen, setWorkstationOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   // Evita hydration mismatch
   useEffect(() => {
-    setMounted(true)
+    const frameId = window.requestAnimationFrame(() => {
+      setMounted(true)
+    })
+
+    let isMounted = true
+
+    const loadUserRole = async () => {
+      try {
+        const response = await fetch("/api/auth/me", { cache: "no-store" })
+
+        if (!response.ok) {
+          return
+        }
+
+        const data = (await response.json()) as { role?: string }
+        if (isMounted) {
+          setIsAdmin(data.role === "admin")
+        }
+      } catch (error) {
+        console.error("Failed to load user role:", error)
+      }
+    }
+
+    loadUserRole()
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      isMounted = false
+    }
   }, [])
 
   const toggleTheme = () => {
@@ -56,6 +82,11 @@ export function Header() {
           <Button asChild variant="ghost" size="sm">
             <Link href="/license">Licenses</Link>
           </Button>
+          {isAdmin ? (
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/catalogs">Catalogs</Link>
+            </Button>
+          ) : null}
         </div>
       <div className="flex items-center gap-2">
         {/* <Settings /> */}
